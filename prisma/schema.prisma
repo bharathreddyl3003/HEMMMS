@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Machine {
+  id                    String                 @id @default(uuid())
+  name                  String
+  model                 String
+  type                  String                 @default("RBH 150mm drill")
+  status                String                 @default("Working") // Working, Under Maintenance, Breakdown
+  runningHours          Float                  @default(0)
+  serialNumber          String?
+  commissioningDate     DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  subassemblies         Subassembly[]
+  maintenanceLogs       MaintenanceRecord[]
+  scheduledMaintenances ScheduledMaintenance[]
+}
+
+model Subassembly {
+  id                  String   @id @default(uuid())
+  machineId           String
+  machine             Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  name                String
+  lifeExpectancyHours Float
+  currentHours        Float    @default(0)
+  healthStatus        String   @default("Good") // Good, Warning, Critical
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model MaintenanceRecord {
+  id          String    @id @default(uuid())
+  machineId   String
+  machine     Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  description String
+  logType     String    @default("Routine") // Routine, Repair, Incident, Scheduled Maintenance
+  hmr         Float?
+  dueDate     DateTime?
+  status      String    @default("Pending") // Pending, Completed
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SparePart {
+  id            String   @id @default(uuid())
+  name          String
+  partNumber    String   @unique
+  stockQuantity Int      @default(0)
+  reorderLevel  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  requisitions PurchaseRequisition[]
+}
+
+model PurchaseRequisition {
+  id          String    @id @default(uuid())
+  sparePartId String
+  sparePart   SparePart @relation(fields: [sparePartId], references: [id], onDelete: Cascade)
+  quantity    Int
+  status      String    @default("Pending") // Pending, Ordered, Delivered
+  orderDate   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model User {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+  role     String @default("USER") // ADMIN or USER
+
+  // Granular Permissions
+  canEditMachines               Boolean @default(false)
+  canEditSpares                 Boolean @default(false)
+  canManageMaintenance          Boolean @default(false)
+  canManagePRs                  Boolean @default(false)
+  canManageScheduledMaintenance Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduledMaintenance {
+  id                  String   @id @default(cuid())
+  type                String // "Engine", "Compressor", "Hydraulic"
+  intervalHrs         Int
+  lastMaintenanceDate DateTime @default(now())
+  lastMaintenanceHmr  Float      @default(0)
+
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([machineId, type])
+}
