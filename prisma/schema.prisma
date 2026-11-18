@@ -12,6 +12,9 @@ model Machine {
   id                    String                 @id @default(uuid())
   name                  String
   model                 String
+  category              String                 @default("Drill") // "Shovel" or "Drill"
+  make                  String?                // e.g. "BEML", "Tata Hitachi", "Komatsu"
+  capacity              String?                // e.g. "6.5 CuM", "5 CuM", "3 CuM", "150mm"
   type                  String                 @default("RBH 150mm drill")
   status                String                 @default("Working") // Working, Under Maintenance, Breakdown
   runningHours          Float                  @default(0)

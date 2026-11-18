@@ -21,10 +21,13 @@ export default function EditMachineModal({ machine }: { machine: any }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: formData.get('name'),
+        category: formData.get('category'),
+        make: formData.get('make'),
+        capacity: formData.get('capacity'),
         model: formData.get('model'),
         type: formData.get('type'),
         status: formData.get('status'),
-        runningHours: parseInt(formData.get('runningHours') as string, 10),
+        runningHours: parseFloat(formData.get('runningHours') as string) || 0,
         serialNumber: formData.get('serialNumber') || null,
         commissioningDate: formData.get('commissioningDate') ? new Date(formData.get('commissioningDate') as string).toISOString() : null,
       })
@@ -61,14 +64,41 @@ export default function EditMachineModal({ machine }: { machine: any }) {
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Edit ${machine.name}`}>
         {error && <div className="badge danger mb-4" style={{ display: 'block' }}>{error}</div>}
         <form onSubmit={handleSubmit}>
-          <label>Machine Name</label>
-          <input type="text" name="name" defaultValue={machine.name} required />
-          
-          <label>Model</label>
-          <input type="text" name="model" defaultValue={machine.model} required />
-          
-          <label>Type</label>
-          <input type="text" name="type" defaultValue={machine.type} required />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label>Equipment Category</label>
+              <select name="category" defaultValue={machine.category || 'Drill'}>
+                <option value="Shovel">Shovel</option>
+                <option value="Drill">Drill</option>
+              </select>
+            </div>
+            <div>
+              <label>Machine Name</label>
+              <input type="text" name="name" defaultValue={machine.name} required />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label>Make / Manufacturer</label>
+              <input type="text" name="make" defaultValue={machine.make || ''} placeholder="e.g. BEML, Tata Hitachi" />
+            </div>
+            <div>
+              <label>Model</label>
+              <input type="text" name="model" defaultValue={machine.model} required />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label>Capacity</label>
+              <input type="text" name="capacity" defaultValue={machine.capacity || ''} placeholder="e.g. 6.5 Cu.M, 150mm" />
+            </div>
+            <div>
+              <label>Type</label>
+              <input type="text" name="type" defaultValue={machine.type} required />
+            </div>
+          </div>
           
           <label>Status</label>
           <select name="status" defaultValue={machine.status} required>

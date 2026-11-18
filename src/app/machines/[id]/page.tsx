@@ -48,8 +48,26 @@ export default async function MachineDetail(
         <div className="glass-panel mb-4">
           <div className="flex-between responsive-hero" style={{ alignItems: 'flex-start' }}>
             <div>
-              <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{machine.name}</h1>
-              <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '2rem' }}>{machine.category === 'Shovel' ? '🚜' : '🛠️'}</span>
+                <h1 style={{ fontSize: '2.5rem', margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {machine.name}
+                </h1>
+                {machine.capacity && (
+                  <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.9rem', padding: '0.35rem 0.75rem' }}>
+                    {machine.capacity}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <span><strong>Category:</strong> {machine.category || 'Drill'}</span>
+                {machine.make && (
+                  <>
+                    <span>&bull;</span>
+                    <span><strong>Make:</strong> {machine.make}</span>
+                  </>
+                )}
+                <span>&bull;</span>
                 <span><strong>Model:</strong> {machine.model}</span>
                 <span>&bull;</span>
                 <span><strong>Type:</strong> {machine.type}</span>

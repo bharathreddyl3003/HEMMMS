@@ -5,9 +5,14 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MaintenanceStatusPage() {
+export default async function MaintenanceStatusPage(props: {
+  searchParams: Promise<{ module?: string }>
+}) {
   const session = await getSession()
   if (!session) redirect('/login')
+
+  const searchParams = await props.searchParams
+  const activeFilter = searchParams.module || 'all'
 
   // Fetch all machines with their scheduled maintenance
   const machines = await prisma.machine.findMany({
@@ -19,11 +24,20 @@ export default async function MaintenanceStatusPage() {
     }
   })
 
+  // Filter based on active module tab
+  const filteredMachines = machines.filter(m => {
+    if (activeFilter === 'shovels') return m.category === 'Shovel'
+    if (activeFilter === 'drills') return m.category === 'Drill' || !m.category
+    return true
+  })
+
   // Process and sort data
   let overdueCount = 0
   let dueSoonCount = 0
 
-  const processedMachines = machines.map(machine => {
+  const processedMachines = filteredMachines.map(machine => {
+    const isShovel = machine.category === 'Shovel'
+
     // Helper to calculate hours left
     const getHoursLeft = (type: string) => {
       const schedule = machine.scheduledMaintenances.find(s => s.type === type)
@@ -33,12 +47,15 @@ export default async function MaintenanceStatusPage() {
     }
 
     const engineLeft = getHoursLeft('Engine')
-    const compressorLeft = getHoursLeft('Compressor')
+    const compressorLeft = isShovel ? null : getHoursLeft('Compressor')
     const hydraulicLeft = getHoursLeft('Hydraulic')
 
-    // Find the minimum hours left across the three categories
-    const allLeft = [engineLeft, compressorLeft, hydraulicLeft].filter(val => val !== null) as number[]
-    const minHoursLeft = allLeft.length > 0 ? Math.min(...allLeft) : Infinity
+    // Find the minimum hours left across applicable categories (ignore compressor for shovels)
+    const applicableLeft = isShovel 
+      ? [engineLeft, hydraulicLeft].filter(val => val !== null) as number[]
+      : [engineLeft, compressorLeft, hydraulicLeft].filter(val => val !== null) as number[]
+
+    const minHoursLeft = applicableLeft.length > 0 ? Math.min(...applicableLeft) : Infinity
 
     if (minHoursLeft <= 0) {
       overdueCount++
@@ -46,7 +63,6 @@ export default async function MaintenanceStatusPage() {
       dueSoonCount++
     }
 
-    // Helper for threshold percentages
     const getStatusClass = (hoursLeft: number | null, type: string) => {
       if (hoursLeft === null) return 'unknown'
       const schedule = machine.scheduledMaintenances.find(s => s.type === type)
@@ -63,6 +79,7 @@ export default async function MaintenanceStatusPage() {
 
     return {
       ...machine,
+      isShovel,
       engineLeft,
       compressorLeft,
       hydraulicLeft,
@@ -77,7 +94,7 @@ export default async function MaintenanceStatusPage() {
   processedMachines.sort((a, b) => a.minHoursLeft - b.minHoursLeft)
 
   return (
-    <div className="page-container fade-in" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+    <div className="page-container fade-in" style={{ maxWidth: '1240px', margin: '0 auto', padding: '2rem 1rem' }}>
       <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="text-2xl font-bold" style={{ textShadow: '0 0 20px rgba(255,255,255,0.1)', margin: 0 }}>
@@ -93,12 +110,37 @@ export default async function MaintenanceStatusPage() {
         </Link>
       </div>
 
+      {/* Module Filter Tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <Link
+          href="/maintenance-status?module=all"
+          className={`btn ${activeFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ fontSize: '0.9rem', padding: '0.45rem 1rem' }}
+        >
+          All Fleet ({machines.length})
+        </Link>
+        <Link
+          href="/maintenance-status?module=shovels"
+          className={`btn ${activeFilter === 'shovels' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ fontSize: '0.9rem', padding: '0.45rem 1rem' }}
+        >
+          🚜 Shovels ({machines.filter(m => m.category === 'Shovel').length})
+        </Link>
+        <Link
+          href="/maintenance-status?module=drills"
+          className={`btn ${activeFilter === 'drills' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ fontSize: '0.9rem', padding: '0.45rem 1rem' }}
+        >
+          🛠️ Drills ({machines.filter(m => m.category === 'Drill' || !m.category).length})
+        </Link>
+      </div>
+
       {/* Summary KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
         <div className="glass-panel" style={{ padding: '1.25rem' }}>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Fleet Units</div>
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Filtered Fleet Units</div>
           <div style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'Outfit, sans-serif', color: 'var(--text-primary)' }}>
-            {machines.length} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 400 }}>Drills</span>
+            {processedMachines.length} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 400 }}>Units</span>
           </div>
         </div>
 
@@ -121,10 +163,12 @@ export default async function MaintenanceStatusPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: '1.25rem 1rem' }}>Machine</th>
+              <th style={{ padding: '1.25rem 1rem' }}>Equipment</th>
               <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>Current HMR</th>
               <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>Engine Side (250h)</th>
-              <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>Compressor Side (500h)</th>
+              <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>
+                Compressor Side (500h)
+              </th>
               <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>Hydraulic Side (1000h)</th>
               <th style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>Action</th>
             </tr>
@@ -141,9 +185,17 @@ export default async function MaintenanceStatusPage() {
               >
                 <td style={{ padding: '1.25rem 1rem' }}>
                   <Link href={`/machines/${m.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                    <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--accent)' }}>{m.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>{m.isShovel ? '🚜' : '🛠️'}</span>
+                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--accent)' }}>{m.name}</span>
+                      {m.capacity && (
+                        <span className="badge" style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.08)' }}>
+                          {m.capacity}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {m.model} {m.serialNumber ? `• S/N: ${m.serialNumber}` : ''}
+                      {m.make ? `${m.make} ` : ''}{m.model} {m.serialNumber ? `• S/N: ${m.serialNumber}` : ''}
                     </div>
                   </Link>
                 </td>
@@ -156,7 +208,21 @@ export default async function MaintenanceStatusPage() {
                   <StatusCell hoursLeft={m.engineLeft} status={m.engineStatus} />
                 </td>
                 <td style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>
-                  <StatusCell hoursLeft={m.compressorLeft} status={m.compressorStatus} />
+                  {m.isShovel ? (
+                    <div style={{ 
+                      padding: '0.5rem 0.75rem',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      fontStyle: 'italic',
+                      background: 'rgba(255,255,255,0.02)',
+                      borderRadius: '6px',
+                      display: 'inline-block'
+                    }}>
+                      N/A (Shovel)
+                    </div>
+                  ) : (
+                    <StatusCell hoursLeft={m.compressorLeft} status={m.compressorStatus} />
+                  )}
                 </td>
                 <td style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>
                   <StatusCell hoursLeft={m.hydraulicLeft} status={m.hydraulicStatus} />
@@ -175,7 +241,7 @@ export default async function MaintenanceStatusPage() {
             {processedMachines.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No machines found in fleet.
+                  No equipment found in this category.
                 </td>
               </tr>
             )}
@@ -214,11 +280,11 @@ function StatusCell({ hoursLeft, status }: { hoursLeft: number | null, status: s
       background: 'rgba(0,0,0,0.35)',
       borderRadius: '8px',
       border: isOverdue ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-      minWidth: '100px'
+      minWidth: '95px'
     }}>
       <div style={{
         fontFamily: 'Outfit, sans-serif',
-        fontSize: '1.3rem',
+        fontSize: '1.25rem',
         fontWeight: 700,
         color: color,
         textShadow: `0 0 15px ${shadow}`
@@ -226,7 +292,7 @@ function StatusCell({ hoursLeft, status }: { hoursLeft: number | null, status: s
         {isOverdue ? Math.abs(hoursLeft).toFixed(1) : hoursLeft.toFixed(1)}
       </div>
       <div style={{ 
-        fontSize: '0.72rem', 
+        fontSize: '0.7rem', 
         color: isOverdue ? '#ef4444' : 'var(--text-secondary)', 
         textTransform: 'uppercase', 
         letterSpacing: '0.05em', 

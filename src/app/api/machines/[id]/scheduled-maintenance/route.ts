@@ -17,14 +17,27 @@ export async function GET(
       where: { machineId: resolvedParams.id }
     })
     
-    // If not created yet, create the defaults
+    // If not created yet, create category-specific defaults
     if (schedules.length === 0) {
+      const machine = await prisma.machine.findUnique({
+        where: { id: resolvedParams.id },
+        select: { category: true, runningHours: true }
+      })
+
+      const isShovel = machine?.category === 'Shovel'
+      const initialHmr = machine?.runningHours || 0
+
+      const defaultData = isShovel ? [
+        { machineId: resolvedParams.id, type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: initialHmr },
+        { machineId: resolvedParams.id, type: 'Hydraulic', intervalHrs: 1000, lastMaintenanceHmr: initialHmr },
+      ] : [
+        { machineId: resolvedParams.id, type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: initialHmr },
+        { machineId: resolvedParams.id, type: 'Compressor', intervalHrs: 500, lastMaintenanceHmr: initialHmr },
+        { machineId: resolvedParams.id, type: 'Hydraulic', intervalHrs: 1000, lastMaintenanceHmr: initialHmr },
+      ]
+
       await prisma.scheduledMaintenance.createMany({
-        data: [
-          { machineId: resolvedParams.id, type: 'Engine', intervalHrs: 250 },
-          { machineId: resolvedParams.id, type: 'Compressor', intervalHrs: 500 },
-          { machineId: resolvedParams.id, type: 'Hydraulic', intervalHrs: 1000 },
-        ]
+        data: defaultData
       })
       const newSchedules = await prisma.scheduledMaintenance.findMany({
         where: { machineId: resolvedParams.id }

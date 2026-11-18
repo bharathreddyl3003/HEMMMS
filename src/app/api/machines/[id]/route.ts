@@ -37,9 +37,12 @@ export async function PATCH(
       data: {
         name: data.name,
         model: data.model,
+        category: data.category !== undefined ? data.category : undefined,
+        make: data.make !== undefined ? data.make : undefined,
+        capacity: data.capacity !== undefined ? data.capacity : undefined,
         type: data.type,
         status: data.status,
-        runningHours: data.runningHours,
+        runningHours: data.runningHours !== undefined ? parseFloat(data.runningHours) : undefined,
         serialNumber: data.serialNumber || null,
         commissioningDate: data.commissioningDate ? new Date(data.commissioningDate) : null,
       }

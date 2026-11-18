@@ -31,17 +31,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name and model are required' }, { status: 400 })
     }
 
+    const category = data.category === 'Shovel' ? 'Shovel' : 'Drill'
+    const initialHmr = parseFloat(data.runningHours || 0)
+
+    const subassemblyData = category === 'Shovel' ? [
+      { name: 'Engine / Prime Mover', lifeExpectancyHours: 10000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Hydraulic System & Pumps', lifeExpectancyHours: 6000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Swing Device & Machinery', lifeExpectancyHours: 8000, currentHours: 0, healthStatus: 'Good' },
+      { name: `Attachment (Boom, Arm, ${data.capacity || 'Bucket'})`, lifeExpectancyHours: 7000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Undercarriage & Tracks', lifeExpectancyHours: 5000, currentHours: 0, healthStatus: 'Good' },
+    ] : [
+      { name: 'Engine', lifeExpectancyHours: 10000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Compressor', lifeExpectancyHours: 8000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Hydraulic Pump', lifeExpectancyHours: 5000, currentHours: 0, healthStatus: 'Good' },
+      { name: 'Rotary Head', lifeExpectancyHours: 6000, currentHours: 0, healthStatus: 'Good' },
+    ]
+
+    const scheduledData = category === 'Shovel' ? [
+      { type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: initialHmr },
+      { type: 'Hydraulic', intervalHrs: 1000, lastMaintenanceHmr: initialHmr },
+    ] : [
+      { type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: initialHmr },
+      { type: 'Compressor', intervalHrs: 500, lastMaintenanceHmr: initialHmr },
+      { type: 'Hydraulic', intervalHrs: 1000, lastMaintenanceHmr: initialHmr },
+    ]
+
     const newMachine = await prisma.machine.create({
       data: {
         name: data.name,
         model: data.model,
-        type: data.type,
-        status: data.status,
-        runningHours: data.runningHours,
+        category,
+        make: data.make || null,
+        capacity: data.capacity || null,
+        type: data.type || (category === 'Shovel' ? 'Hydraulic Shovel' : 'RBH 150mm drill'),
+        status: data.status || 'Working',
+        runningHours: initialHmr,
         serialNumber: data.serialNumber || null,
         commissioningDate: data.commissioningDate ? new Date(data.commissioningDate) : null,
+        subassemblies: {
+          create: subassemblyData
+        },
+        scheduledMaintenances: {
+          create: scheduledData
+        }
       },
-      include: { subassemblies: true }
+      include: { 
+        subassemblies: true,
+        scheduledMaintenances: true
+      }
     })
 
     return NextResponse.json(newMachine)
