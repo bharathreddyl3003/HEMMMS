@@ -25,6 +25,7 @@ export default function TopNav({
       <div className="nav-links" style={{ display: 'flex', alignItems: 'center' }}>
         <Link href="/" className={pathname === '/' ? 'active' : ''}>Dashboard</Link>
         <Link href="/maintenance-status" className={pathname === '/maintenance-status' ? 'active' : ''}>Maintenance Status</Link>
+        <Link href="/reports" className={pathname === '/reports' ? 'active' : ''}>Reports & Analytics</Link>
         <Link href="/inventory" className={pathname === '/inventory' ? 'active' : ''}>Inventory & Spares</Link>
         <Link href="/requisitions" className={pathname === '/requisitions' ? 'active' : ''}>Purchase Requisitions</Link>
         

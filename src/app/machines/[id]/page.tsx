@@ -6,6 +6,7 @@ import EditMachineModal from '@/components/EditMachineModal';
 import EditSubassemblyModal from '@/components/EditSubassemblyModal';
 import AddSubassemblyModal from '@/components/AddSubassemblyModal';
 import ScheduledMaintenanceTab from '@/components/ScheduledMaintenanceTab';
+import DailyLogsList from '@/components/DailyLogsList';
 import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -161,58 +162,11 @@ export default async function MachineDetail(
             </div>
 
             <div>
-              <div className="flex-between mb-4">
-                <h2>Daily Logs & History</h2>
-                <AddLogModal machineId={machine.id} />
-              </div>
-              <div className="glass-panel" style={{ padding: '1.5rem', maxHeight: '600px', overflowY: 'auto' }}>
-                {machine.maintenanceLogs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    No logs recorded yet.
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative' }}>
-                    {/* Timeline vertical line */}
-                    <div style={{ position: 'absolute', left: '15px', top: '10px', bottom: '10px', width: '2px', background: 'var(--border)' }}></div>
-                    
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1.5rem', margin: 0, padding: 0 }}>
-                      {machine.maintenanceLogs.map(log => (
-                        <li key={log.id} style={{ position: 'relative', paddingLeft: '40px' }}>
-                          {/* Timeline dot */}
-                          <div style={{ 
-                            position: 'absolute', 
-                            left: '11px', 
-                            top: '5px', 
-                            width: '10px', 
-                            height: '10px', 
-                            borderRadius: '50%', 
-                            background: log.logType === 'Scheduled Maintenance' ? 'var(--accent)' : log.logType === 'Repair' ? 'var(--danger)' : 'var(--success)',
-                            boxShadow: '0 0 0 4px var(--surface)'
-                          }}></div>
-                          
-                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1rem' }}>
-                            <div className="flex-between mb-2">
-                              <span className={`badge ${log.logType === 'Scheduled Maintenance' ? 'primary' : log.logType === 'Repair' ? 'danger' : 'success'}`}>
-                                {log.logType}
-                              </span>
-                              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(log.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            
-                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>{log.description}</p>
-                            
-                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                              {log.hmr && (
-                                <span><strong style={{ color: 'var(--text-primary)' }}>HMR:</strong> {log.hmr}</span>
-                              )}
-                              <span><strong style={{ color: 'var(--text-primary)' }}>Status:</strong> {log.status}</span>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <DailyLogsList 
+                machineId={machine.id} 
+                initialLogs={machine.maintenanceLogs} 
+                currentHmr={machine.runningHours} 
+              />
             </div>
           </div>
         )}

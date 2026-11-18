@@ -50,7 +50,16 @@ export async function PATCH(
     }
 
     const resolvedParams = await params
-    const { type, lastMaintenanceDate, lastMaintenanceHmr } = await request.json()
+    const { 
+      type, 
+      lastMaintenanceDate, 
+      lastMaintenanceHmr,
+      performedBy,
+      partsUsed,
+      timeSpentHrs,
+      cost,
+      description
+    } = await request.json()
 
     const updated = await prisma.$transaction(async (tx) => {
       const schedule = await tx.scheduledMaintenance.update({
@@ -61,18 +70,34 @@ export async function PATCH(
           }
         },
         data: {
-          lastMaintenanceDate,
-          lastMaintenanceHmr
+          lastMaintenanceDate: lastMaintenanceDate ? new Date(lastMaintenanceDate) : new Date(),
+          lastMaintenanceHmr: parseFloat(lastMaintenanceHmr)
         }
       })
+
+      // Update machine running hours if maintenance HMR is higher
+      const machine = await tx.machine.findUnique({
+        where: { id: resolvedParams.id }
+      })
+      if (machine && parseFloat(lastMaintenanceHmr) > machine.runningHours) {
+        await tx.machine.update({
+          where: { id: resolvedParams.id },
+          data: { runningHours: parseFloat(lastMaintenanceHmr) }
+        })
+      }
 
       await tx.maintenanceRecord.create({
         data: {
           machineId: resolvedParams.id,
-          description: `Completed Scheduled Maintenance: ${type} Side`,
+          description: description || `Completed Scheduled Maintenance: ${type} Side`,
           logType: 'Scheduled Maintenance',
-          hmr: lastMaintenanceHmr,
-          status: 'Completed'
+          subassemblyName: type,
+          hmr: parseFloat(lastMaintenanceHmr),
+          status: 'Completed',
+          performedBy: performedBy || null,
+          partsUsed: partsUsed || null,
+          timeSpentHrs: timeSpentHrs ? parseFloat(timeSpentHrs) : null,
+          cost: cost ? parseFloat(cost) : null
         }
       })
 

@@ -25,14 +25,82 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const body = await request.json()
-    const log = await prisma.maintenanceRecord.create({
-      data: body,
-      include: {
-        machine: true
+    const {
+      machineId,
+      description,
+      logType,
+      hmr,
+      dueDate,
+      status,
+      performedBy,
+      partsUsed,
+      timeSpentHrs,
+      cost,
+      subassemblyName,
+      resetSchedule
+    } = await request.json()
+
+    const result = await prisma.$transaction(async (tx) => {
+      const parsedHmr = hmr !== null && hmr !== undefined && hmr !== '' ? parseFloat(hmr) : null
+
+      const log = await tx.maintenanceRecord.create({
+        data: {
+          machineId,
+          description,
+          logType: logType || 'Routine',
+          hmr: parsedHmr,
+          dueDate: dueDate ? new Date(dueDate) : null,
+          status: status || 'Completed',
+          performedBy: performedBy || null,
+          partsUsed: partsUsed || null,
+          timeSpentHrs: timeSpentHrs ? parseFloat(timeSpentHrs) : null,
+          cost: cost ? parseFloat(cost) : null,
+          subassemblyName: subassemblyName || null
+        },
+        include: {
+          machine: true
+        }
+      })
+
+      // If HMR is provided and higher than machine's current running hours, update machine
+      if (parsedHmr !== null) {
+        const machine = await tx.machine.findUnique({ where: { id: machineId } })
+        if (machine && parsedHmr > machine.runningHours) {
+          await tx.machine.update({
+            where: { id: machineId },
+            data: { runningHours: parsedHmr }
+          })
+        }
       }
+
+      // If this is a Scheduled Maintenance completion (or resetSchedule is checked)
+      const scheduleType = subassemblyName || (logType === 'Scheduled Maintenance' ? 'Engine' : null)
+      if (resetSchedule && scheduleType && parsedHmr !== null) {
+        await tx.scheduledMaintenance.upsert({
+          where: {
+            machineId_type: {
+              machineId,
+              type: scheduleType
+            }
+          },
+          update: {
+            lastMaintenanceHmr: parsedHmr,
+            lastMaintenanceDate: new Date()
+          },
+          create: {
+            machineId,
+            type: scheduleType,
+            intervalHrs: scheduleType === 'Engine' ? 250 : scheduleType === 'Compressor' ? 500 : 1000,
+            lastMaintenanceHmr: parsedHmr,
+            lastMaintenanceDate: new Date()
+          }
+        })
+      }
+
+      return log
     })
-    return NextResponse.json(log, { status: 201 })
+
+    return NextResponse.json(result, { status: 201 })
   } catch (error: any) {
     console.error('Maintenance POST Error:', error)
     return NextResponse.json({ error: error.message || 'Failed to create maintenance log' }, { status: 500 })

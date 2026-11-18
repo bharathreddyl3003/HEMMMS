@@ -41,11 +41,16 @@ model MaintenanceRecord {
   id          String    @id @default(uuid())
   machineId   String
   machine     Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
-  description String
-  logType     String    @default("Routine") // Routine, Repair, Incident, Scheduled Maintenance
-  hmr         Float?
-  dueDate     DateTime?
-  status      String    @default("Pending") // Pending, Completed
+  description      String
+  logType          String    @default("Routine") // Routine, Repair, Incident, Scheduled Maintenance
+  hmr              Float?
+  dueDate          DateTime?
+  status           String    @default("Pending") // Pending, Completed
+  performedBy      String?
+  partsUsed        String?
+  timeSpentHrs     Float?
+  cost             Float?
+  subassemblyName  String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
