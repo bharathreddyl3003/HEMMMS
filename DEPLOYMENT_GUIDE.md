@@ -20,26 +20,31 @@ flowchart LR
 
 ---
 
-## Step 1: Create Your Free Supabase Project
+## Step 1: Create Your Free Supabase Project & Get Connection Strings
 
 1. Log in to [supabase.com](https://supabase.com) and click **"New Project"**.
 2. Fill in the details:
    - **Name**: `hemmms-fleet` (or any name you prefer)
    - **Database Password**: Choose a strong password (save this safely!)
    - **Region**: Choose the closest region (e.g. `ap-south-1` Mumbai or `ap-southeast-1` Singapore)
-3. Wait 1–2 minutes while Supabase provisions your PostgreSQL database.
-4. In the left sidebar, navigate to **Project Settings** (gear icon) > **Database**.
-5. Scroll down to **Connection strings**:
-   - Under the **Connection pooling** tab (Transaction mode, Port `6543`), copy the URI:
-     ```text
-     postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true
-     ```
-     *(This will be your `DATABASE_URL`)*
-   - Under the **Direct connection** tab (Port `5432`), copy the URI:
-     ```text
-     postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
-     ```
-     *(This will be your `DIRECT_URL`)*
+3. Wait 1–2 minutes while Supabase finishes setting up your project.
+
+### How to Find Your Connection Strings (2 Quick Ways):
+
+#### Method A: The "Connect" Button (Easiest & Fastest)
+1. At the very top of your Supabase project dashboard (in the top header bar), click the **"Connect"** button (or **"Connect to project"**).
+2. A popup window will appear:
+   - Click the **"ORM"** tab (or **"Prisma"**).
+   - Supabase will literally display the exact format for Prisma!
+   - Under **Mode**, you will see:
+     - **Transaction** (Port `6543`) -> Copy this for `DATABASE_URL`
+     - **Session / Direct** (Port `5432`) -> Copy this for `DIRECT_URL`
+   - *Remember to replace `[YOUR-PASSWORD]` with your actual database password.*
+
+#### Method B: Via Sidebar
+Depending on your Supabase dashboard version:
+- **New UI**: In the left sidebar, click the **Database** icon (looks like a cylinder/stack of disks) > click **Connection Pooling** or **Settings**.
+- **Alternative UI**: Click the **Gear icon (Project Settings)** at the very bottom of the left sidebar > click **Database** in the settings sub-menu. Scroll down to the **Connection strings** section.
 
 ---
 
