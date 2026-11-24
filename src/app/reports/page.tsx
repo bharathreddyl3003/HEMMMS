@@ -41,17 +41,20 @@ export default async function ReportsPage() {
   ])
 
   return (
-    <div className="page-container fade-in" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+    <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.75rem 1.5rem 3rem' }}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ textShadow: '0 0 20px rgba(255,255,255,0.1)', margin: 0 }}>
-          Fleet Maintenance Analytics & Reports
+        <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#38bdf8', marginBottom: '0.3rem' }}>
+          Cost &amp; Reliability Analytics
+        </div>
+        <h1 style={{ margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Fleet Maintenance Analytics &amp; Reports
         </h1>
-        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+        <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           Real-time expenditure, labor downtime, proactive ratios, and compliance records
         </p>
       </div>
 
       <ReportsView initialRecords={records} machines={machines} />
-    </div>
+    </main>
   )
 }

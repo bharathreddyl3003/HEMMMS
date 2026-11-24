@@ -10,6 +10,7 @@ export interface CompletionRecord {
   hmr: number | null
   status: string
   performedBy: string | null
+  partsUsed?: string | null
   machine: {
     id: string
     name: string
@@ -28,6 +29,12 @@ interface MaintenanceCompletionRegistryProps {
   initialRecords: CompletionRecord[]
   category?: 'Shovel' | 'Drill'
   refreshTrigger?: number
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
 }
 
 export default function MaintenanceCompletionRegistry({
@@ -53,53 +60,61 @@ export default function MaintenanceCompletionRegistry({
     }
   }
 
-  // Refetch ONLY when an actual completion event occurs (trigger > 0), not on initial mount or tab switch
   useEffect(() => {
     if (refreshTrigger > 0) {
       fetchRecords()
     }
   }, [refreshTrigger])
 
-  // Instant in-memory filtering by category (0ms latency on tab switch)
-  const displayedRecords = category 
+  const displayedRecords = category
     ? allRecords.filter(r => r.machine?.category === category)
     : allRecords
 
   return (
-    <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '20px', marginTop: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+    <div className="glass-panel" style={{ padding: '1.4rem', marginTop: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.15rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.35rem 0', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem 0', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>📋 Maintenance Completion Registry</span>
+            <span className="badge accent tabular-nums" style={{ fontSize: '0.72rem' }}>
+              {displayedRecords.length} logged
+            </span>
           </h2>
-          <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-            Historical log of completed scheduled services and recorded fitter assignments.
+          <div style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
+            Historical log of completed scheduled services, parts consumed, and fitter assignments.
           </div>
         </div>
 
         <button
+          type="button"
           onClick={fetchRecords}
           disabled={loading}
-          className="btn"
-          style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', background: 'rgba(255, 255, 255, 0.05)', cursor: 'pointer' }}
+          className="btn btn-secondary"
+          style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem' }}
         >
           {loading ? 'Refreshing...' : '↻ Refresh registry'}
         </button>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Maintenance Completion Registry"
+        className="table-wrapper"
+        style={{ border: '1px solid var(--border)', background: 'rgba(6, 10, 20, 0.35)' }}
+      >
+        <table className="hemmms-table" style={{ minWidth: '900px' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.78rem', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '0.75rem 1rem' }}>COMPLETED AT</th>
-              <th style={{ padding: '0.75rem 1rem' }}>{category === 'Shovel' ? 'SHOVEL' : 'DRILL'}</th>
-              <th style={{ padding: '0.75rem 1rem' }}>MODEL</th>
-              <th style={{ padding: '0.75rem 1rem' }}>LAST HMR</th>
-              <th style={{ padding: '0.75rem 1rem' }}>CURRENT HMR</th>
-              <th style={{ padding: '0.75rem 1rem' }}>INTERVAL</th>
-              <th style={{ padding: '0.75rem 1rem' }}>USED HRS</th>
-              <th style={{ padding: '0.75rem 1rem' }}>DUE HRS</th>
-              <th style={{ padding: '0.75rem 1rem' }}>FITTER NAME</th>
+            <tr>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>COMPLETED AT</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>{category === 'Shovel' ? 'SHOVEL' : 'DRILL'}</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>MODEL &amp; PARTS</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>LAST HMR</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>CURRENT HMR</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>INTERVAL</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>USED HRS</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>DUE HRS</th>
+              <th scope="col" style={{ padding: '0.8rem 1rem' }}>FITTER NAME</th>
             </tr>
           </thead>
           <tbody>
@@ -127,71 +142,79 @@ export default function MaintenanceCompletionRegistry({
                 const lastHmr = primarySchedule?.lastMaintenanceHmr || currentHmr
                 const usedHrs = Math.max(0, currentHmr - lastHmr)
                 const dueHrs = interval - usedHrs
+                const fitter = record.performedBy || 'Fitter'
 
                 return (
-                  <tr
-                    key={record.id}
-                    style={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                      transition: 'background 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    {/* Completed At */}
-                    <td style={{ padding: '0.85rem 1rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                  <tr key={record.id}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#cbd5e1', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                       {formattedDate}
                     </td>
 
-                    {/* Machine ID */}
-                    <td style={{ padding: '0.85rem 1rem' }}>
+                    <th scope="row" style={{ padding: '0.85rem 1rem', textAlign: 'left' }}>
                       <Link
                         href={`/machines/${record.machine.id}`}
-                        style={{
-                          color: '#38bdf8',
-                          fontWeight: 700,
-                          textDecoration: 'none'
-                        }}
+                        style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'none' }}
                       >
                         {record.machine.name}
                       </Link>
+                    </th>
+
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ color: '#e2e8f0', fontWeight: 500 }}>{record.machine.model}</div>
+                      {record.partsUsed && (
+                        <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.15rem', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.partsUsed}>
+                          🔧 {record.partsUsed}
+                        </div>
+                      )}
                     </td>
 
-                    {/* Model */}
-                    <td style={{ padding: '0.85rem 1rem', color: '#cbd5e1' }}>
-                      {record.machine.model}
-                    </td>
-
-                    {/* Last HMR */}
-                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#94a3b8' }}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
                       {lastHmr.toFixed(0)}
                     </td>
 
-                    {/* Current HMR */}
-                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#f8fafc', fontWeight: 600 }}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#f8fafc', fontWeight: 600 }}>
                       {currentHmr.toFixed(1)}
                     </td>
 
-                    {/* Interval */}
-                    <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
                       {interval}h
                     </td>
 
-                    {/* Used Hrs */}
-                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#cbd5e1' }}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#cbd5e1' }}>
                       {usedHrs.toFixed(2)}
                     </td>
 
-                    {/* Due Hrs */}
-                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#34d399', fontWeight: 600 }}>
+                    <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#34d399', fontWeight: 600 }}>
                       {dueHrs.toFixed(2)}
                     </td>
 
-                    {/* Fitter Name */}
-                    <td style={{ padding: '0.85rem 1rem' }}>
-                      <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '0.3rem 0.65rem' }}>
-                        {record.performedBy || 'Fitter'}
-                      </span>
+                    <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.45rem',
+                        padding: '0.24rem 0.65rem 0.24rem 0.3rem',
+                        borderRadius: '999px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.28)'
+                      }}>
+                        <span style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          background: '#38bdf8',
+                          color: '#060a14',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          display: 'grid',
+                          placeItems: 'center'
+                        }}>
+                          {getInitials(fitter)}
+                        </span>
+                        <span style={{ color: '#e2e8f0', fontSize: '0.8rem', fontWeight: 600 }}>
+                          {fitter}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 )

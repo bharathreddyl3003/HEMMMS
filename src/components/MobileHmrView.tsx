@@ -174,28 +174,30 @@ export default function MobileHmrView({
       </div>
 
       {/* Quick Search Input */}
-      <div style={{ marginBottom: '1.25rem' }}>
+      <search style={{ marginBottom: '1.25rem' }}>
         <input
-          type="text"
+          type="search"
+          aria-label="Quick search machine ID or model"
           placeholder="🔍 Quick search machine ID or model..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             margin: 0,
-            padding: '0.65rem 1rem',
+            padding: '0.7rem 1rem',
+            minBlockSize: '46px',
             borderRadius: '12px',
-            fontSize: '0.9rem',
-            background: 'rgba(0, 0, 0, 0.35)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            fontSize: '0.95rem',
+            background: 'rgba(6, 10, 20, 0.65)',
+            border: '1px solid var(--border-strong)'
           }}
         />
-      </div>
+      </search>
 
       {/* 2-Column Responsive Card Grid (Page 3 of PDF) */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-        gap: '1rem' 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+        gap: '1rem'
       }}>
         {filteredMachines.map(m => {
           const schedule = m.scheduledMaintenances?.find(s => s.type === 'Engine') || m.scheduledMaintenances?.[0]
@@ -203,85 +205,115 @@ export default function MobileHmrView({
           const interval = schedule ? schedule.intervalHrs : (activeModule === 'shovels' ? 500 : 250)
           const currentVal = localHmr[m.id] !== undefined ? localHmr[m.id] : m.runningHours
           const hoursDue = lastHmr + interval - currentVal
+          const usedPct = interval > 0 ? Math.min(100, Math.max(0, ((currentVal - lastHmr) / interval) * 100)) : 0
           const isOverdue = schedule && hoursDue <= 0
+          const isDueSoon = schedule && hoursDue > 0 && hoursDue <= 50
           const status = saveStatus[m.id] || 'idle'
+          const accent = isOverdue ? '#f43f5e' : isDueSoon ? '#f59e0b' : '#10b981'
 
           return (
             <div
               key={m.id}
               className="glass-panel"
               style={{
-                padding: '1rem 1.25rem',
+                padding: '1rem 1.2rem 0.9rem',
                 borderRadius: '16px',
-                background: 'rgba(15, 23, 42, 0.7)',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '1rem',
-                border: isOverdue ? '1px solid rgba(244, 63, 94, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)'
+                flexDirection: 'column',
+                gap: '0.75rem',
+                border: isOverdue ? '1px solid rgba(244, 63, 94, 0.4)' : isDueSoon ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid var(--glass-border)'
               }}
             >
-              {/* Left Column: Equipment Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem' }}>
-                  <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'Outfit, sans-serif' }}>
-                    {m.name}
-                  </span>
-                </div>
-                
-                <div style={{ fontSize: '0.82rem', color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.35rem' }}>
-                  {m.model} {m.capacity ? `• ${m.capacity}` : ''}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                {/* Left Column: Equipment Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
+                    <Link
+                      href={`/machines/${m.id}`}
+                      style={{ fontSize: '1.45rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-heading-stack)', textDecoration: 'none' }}
+                    >
+                      {m.name}
+                    </Link>
+                    {m.capacity && (
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.06)',
+                        color: '#cbd5e1'
+                      }}>
+                        {m.capacity}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: '0.82rem', color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.35rem' }}>
+                    {m.model}
+                  </div>
+
+                  <div className="tabular-nums" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.76rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Last: <strong style={{ color: '#cbd5e1' }}>{lastHmr.toFixed(0)}</strong>
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>&bull;</span>
+                    <span style={{ color: accent, fontWeight: 700 }}>
+                      {isOverdue ? `${Math.abs(hoursDue).toFixed(0)}h overdue` : `${hoursDue.toFixed(0)}h left`}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    Last: <strong style={{ color: '#cbd5e1' }}>{lastHmr.toFixed(0)}</strong>
-                  </span>
-                  <span style={{ color: 'var(--text-secondary)' }}>&bull;</span>
-                  <span style={{ color: isOverdue ? '#f43f5e' : '#34d399', fontWeight: 600 }}>
-                    {isOverdue ? `${Math.abs(hoursDue).toFixed(0)}h overdue` : `${hoursDue.toFixed(0)}h left`}
-                  </span>
+                {/* Right Column: HMR Input & Auto-save */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '142px' }}>
+                  <label
+                    htmlFor={`mobile-hmr-${m.id}`}
+                    style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}
+                  >
+                    Current HMR
+                  </label>
+
+                  <input
+                    id={`mobile-hmr-${m.id}`}
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={currentVal}
+                    onChange={(e) => handleHmrChange(m.id, e.target.value)}
+                    disabled={!canEdit}
+                    className="tabular-nums"
+                    style={{
+                      margin: 0,
+                      padding: '0.5rem 0.65rem',
+                      minBlockSize: '48px',
+                      fontSize: '1.22rem',
+                      fontWeight: 700,
+                      textAlign: 'right',
+                      width: '100%',
+                      background: 'rgba(6, 10, 20, 0.75)',
+                      border: status === 'saving'
+                        ? '1.5px solid #f59e0b'
+                        : status === 'saved'
+                        ? '1.5px solid #10b981'
+                        : status === 'error'
+                        ? '1.5px solid #f43f5e'
+                        : '1.5px solid rgba(148, 163, 184, 0.25)',
+                      borderRadius: '10px',
+                      color: '#fff'
+                    }}
+                  />
+
+                  <div style={{ fontSize: '0.72rem', marginTop: '0.25rem', height: '16px' }}>
+                    {status === 'saving' && <span style={{ color: '#fbbf24' }}>● Saving...</span>}
+                    {status === 'saved' && <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Auto-saved</span>}
+                    {status === 'idle' && <span style={{ color: '#64748b' }}>Auto-save</span>}
+                    {status === 'error' && <span style={{ color: '#fb7185' }}>⚠ Save failed</span>}
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column: HMR Input & Auto-save */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '135px' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-                  Current HMR
-                </span>
-                
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={currentVal}
-                  onChange={(e) => handleHmrChange(m.id, e.target.value)}
-                  disabled={!canEdit}
-                  style={{
-                    margin: 0,
-                    padding: '0.5rem 0.65rem',
-                    fontSize: '1.25rem',
-                    fontFamily: 'Outfit, monospace',
-                    fontWeight: 700,
-                    textAlign: 'right',
-                    width: '100%',
-                    background: 'rgba(0, 0, 0, 0.45)',
-                    border: status === 'saving'
-                      ? '1.5px solid #f59e0b'
-                      : status === 'saved'
-                      ? '1.5px solid #10b981'
-                      : '1.5px solid rgba(255, 255, 255, 0.18)',
-                    borderRadius: '10px',
-                    color: '#fff'
-                  }}
-                />
-
-                <div style={{ fontSize: '0.72rem', marginTop: '0.25rem' }}>
-                  {status === 'saving' && <span style={{ color: '#fbbf24' }}>● Saving...</span>}
-                  {status === 'saved' && <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Auto-saved</span>}
-                  {status === 'idle' && <span style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>Auto-save</span>}
-                  {status === 'error' && <span style={{ color: '#fb7185' }}>⚠ Save failed</span>}
-                </div>
+              {/* Service Cycle Progress Strip */}
+              <div style={{ height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                <div style={{ width: `${usedPct}%`, height: '100%', background: accent, borderRadius: '999px' }} />
               </div>
             </div>
           )

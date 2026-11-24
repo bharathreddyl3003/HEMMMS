@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import ScheduleMaintenanceModal from '@/components/ScheduleMaintenanceModal'
 import AddMachineModal from '@/components/AddMachineModal'
@@ -36,14 +36,15 @@ export default function DashboardView({
   canEdit
 }: DashboardViewProps) {
   const [activeModule, setActiveModule] = useState<'shovels' | 'drills'>(initialModule)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'healthy' | 'attention'>('all')
 
-  const shovels = allMachines.filter(m => m.category === 'Shovel')
-  const drills = allMachines.filter(m => m.category === 'Drill' || !m.category)
-  const displayedMachines = activeModule === 'shovels' ? shovels : drills
+  const shovels = useMemo(() => allMachines.filter(m => m.category === 'Shovel'), [allMachines])
+  const drills = useMemo(() => allMachines.filter(m => m.category === 'Drill' || !m.category), [allMachines])
+  const moduleMachines = activeModule === 'shovels' ? shovels : drills
 
   const handleTabSwitch = (mod: 'shovels' | 'drills') => {
     setActiveModule(mod)
-    // Update URL query string smoothly without triggering a server roundtrip
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       url.searchParams.set('module', mod)
@@ -51,34 +52,85 @@ export default function DashboardView({
     }
   }
 
+  // Telemetry metrics for active module
+  const metrics = useMemo(() => {
+    const total = moduleMachines.length
+    const working = moduleMachines.filter(m => m.status === 'Working').length
+    const attention = moduleMachines.filter(m =>
+      m.status !== 'Working' ||
+      m.subassemblies.some(s => s.healthStatus === 'Warning' || s.healthStatus === 'Critical')
+    ).length
+    const totalHmr = moduleMachines.reduce((sum, m) => sum + (m.runningHours || 0), 0)
+    const availability = total > 0 ? (working / total) * 100 : 100
+
+    return { total, working, attention, totalHmr, availability }
+  }, [moduleMachines])
+
+  // Filtered machines (instant 0ms search & status filter)
+  const displayedMachines = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return moduleMachines.filter(m => {
+      const hasWarning = m.subassemblies.some(s => s.healthStatus === 'Warning' || s.healthStatus === 'Critical')
+      const needsAttention = m.status !== 'Working' || hasWarning
+
+      if (statusFilter === 'healthy' && needsAttention) return false
+      if (statusFilter === 'attention' && !needsAttention) return false
+
+      if (!q) return true
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.model.toLowerCase().includes(q) ||
+        (m.make && m.make.toLowerCase().includes(q)) ||
+        (m.capacity && m.capacity.toLowerCase().includes(q))
+      )
+    })
+  }, [moduleMachines, searchQuery, statusFilter])
+
   return (
-    <main style={{ padding: '2rem', maxWidth: '1280px', margin: '0 auto' }}>
+    <main style={{ padding: '1.75rem 1.5rem 3rem', maxWidth: '1400px', marginInline: 'auto' }}>
       {/* Top Header */}
       <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#38bdf8',
+            marginBottom: '0.3rem'
+          }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+            RGOCP2 Open-Cast Fleet Operations
+          </div>
+          <h1 style={{ margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Fleet Command Center
           </h1>
-          <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Heavy Earth Moving Machinery Management System
+          <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Real-time machine health, subassembly wear tracking, and service readiness
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Link
             href={`/hmr-register?module=${activeModule}`}
             className="btn"
-            style={{ 
-              padding: '0.55rem 1rem', 
-              fontSize: '0.875rem',
+            style={{
               background: 'rgba(56, 189, 248, 0.12)',
               color: '#38bdf8',
-              border: '1px solid rgba(56, 189, 248, 0.35)',
-              fontWeight: 600,
-              textDecoration: 'none'
+              borderColor: 'rgba(56, 189, 248, 0.35)',
+              fontWeight: 600
             }}
           >
             📋 HMR Register
+          </Link>
+          <Link
+            href={`/mobile-hmr?module=${activeModule}`}
+            className="btn btn-secondary"
+          >
+            📱 Field HMR
           </Link>
           <ScheduleMaintenanceModal machines={allMachines.map(m => ({ id: m.id, name: m.name }))} />
           {canEdit && (
@@ -87,197 +139,301 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Instant Module Switcher Tabs (0ms latency) */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.75rem', 
-        marginBottom: '2rem', 
-        borderBottom: '1px solid var(--border)',
-        paddingBottom: '0.75rem'
-      }}>
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('shovels')}
-          style={{
+      {/* Segmented Module Switcher + Search/Filter Toolbar */}
+      <div className="glass-panel mb-6" style={{ padding: '0.9rem 1.1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          {/* Module Switcher Pills */}
+          <div style={{
             display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '10px',
-            fontSize: '1.05rem',
-            fontWeight: activeModule === 'shovels' ? 700 : 500,
-            background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'shovels' ? '#38bdf8' : 'var(--text-secondary)',
-            border: activeModule === 'shovels' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
-            boxShadow: activeModule === 'shovels' ? '0 0 15px rgba(56, 189, 248, 0.2)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <span style={{ fontSize: '1.3rem' }}>🚜</span>
-          <span>Shovels Module</span>
-          <span style={{ 
-            background: activeModule === 'shovels' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-            color: activeModule === 'shovels' ? '#0f172a' : '#cbd5e1',
-            borderRadius: '999px',
-            padding: '0.15rem 0.55rem',
-            fontSize: '0.8rem',
-            fontWeight: 700
-          }}>
-            {shovels.length}
-          </span>
-        </button>
+            gap: '0.4rem',
+            padding: '0.3rem',
+            borderRadius: '12px',
+            background: 'rgba(6, 10, 20, 0.65)',
+            border: '1px solid var(--border)'
+          }} role="tablist" aria-label="Fleet Category">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeModule === 'shovels'}
+              onClick={() => handleTabSwitch('shovels')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                padding: '0.55rem 1.15rem',
+                borderRadius: '9px',
+                fontSize: '0.92rem',
+                fontWeight: activeModule === 'shovels' ? 700 : 500,
+                background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
+                color: activeModule === 'shovels' ? '#f8fafc' : 'var(--text-secondary)',
+                border: activeModule === 'shovels' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>🚜</span>
+              <span>Shovels Module</span>
+              <span className="tabular-nums" style={{
+                background: activeModule === 'shovels' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+                color: activeModule === 'shovels' ? '#060a14' : '#cbd5e1',
+                borderRadius: '999px',
+                padding: '0.1rem 0.5rem',
+                fontSize: '0.74rem',
+                fontWeight: 700
+              }}>
+                {shovels.length}
+              </span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('drills')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '10px',
-            fontSize: '1.05rem',
-            fontWeight: activeModule === 'drills' ? 700 : 500,
-            background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'drills' ? '#38bdf8' : 'var(--text-secondary)',
-            border: activeModule === 'drills' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
-            boxShadow: activeModule === 'drills' ? '0 0 15px rgba(56, 189, 248, 0.2)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <span style={{ fontSize: '1.3rem' }}>🛠️</span>
-          <span>Drills Module</span>
-          <span style={{ 
-            background: activeModule === 'drills' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-            color: activeModule === 'drills' ? '#0f172a' : '#cbd5e1',
-            borderRadius: '999px',
-            padding: '0.15rem 0.55rem',
-            fontSize: '0.8rem',
-            fontWeight: 700
-          }}>
-            {drills.length}
-          </span>
-        </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeModule === 'drills'}
+              onClick={() => handleTabSwitch('drills')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                padding: '0.55rem 1.15rem',
+                borderRadius: '9px',
+                fontSize: '0.92rem',
+                fontWeight: activeModule === 'drills' ? 700 : 500,
+                background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
+                color: activeModule === 'drills' ? '#f8fafc' : 'var(--text-secondary)',
+                border: activeModule === 'drills' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>🛠️</span>
+              <span>Drills Module</span>
+              <span className="tabular-nums" style={{
+                background: activeModule === 'drills' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+                color: activeModule === 'drills' ? '#060a14' : '#cbd5e1',
+                borderRadius: '999px',
+                padding: '0.1rem 0.5rem',
+                fontSize: '0.74rem',
+                fontWeight: 700
+              }}>
+                {drills.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Search & Status Filter */}
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+            <input
+              type="search"
+              aria-label="Filter equipment"
+              placeholder={`Search ${activeModule === 'shovels' ? 'T2, B1, EX1200...' : 'DM11, IDM30, REL650...'}`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                margin: 0,
+                width: 'min(100%, 240px)',
+                padding: '0.48rem 0.85rem',
+                fontSize: '0.85rem'
+              }}
+            />
+
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              {(['all', 'healthy', 'attention'] as const).map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setStatusFilter(f)}
+                  style={{
+                    padding: '0.45rem 0.8rem',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: statusFilter === f ? 600 : 500,
+                    cursor: 'pointer',
+                    background: statusFilter === f ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.04)',
+                    color: statusFilter === f ? '#38bdf8' : 'var(--text-secondary)',
+                    border: statusFilter === f ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border)'
+                  }}
+                >
+                  {f === 'all' ? 'All' : f === 'healthy' ? 'Healthy' : 'Attention'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Module Overview Banner & Mini Stats */}
-      {activeModule === 'shovels' ? (
-        <div className="glass-panel mb-6" style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.05) 0%, rgba(0,0,0,0.2) 100%)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                🚜 Hydraulic Excavators & Shovels Fleet ({shovels.length} Units)
-              </h2>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                4x BEML BE-1000 (6.5 Cu.M) &bull; 4x Tata Hitachi EX1200 (5.0 Cu.M) &bull; 1x Komatsu PC450 (3.0 Cu.M)
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.4rem 0.75rem' }}>
-                6.5 Cu.M: 4 units (B1, B2, B3, B18)
-              </span>
-              <span className="badge" style={{ background: 'rgba(250, 204, 21, 0.15)', color: '#facc15', padding: '0.4rem 0.75rem' }}>
-                5.0 Cu.M: 4 units (T2, T3, T5, T6)
-              </span>
-              <span className="badge" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '0.4rem 0.75rem' }}>
-                3.0 Cu.M: 1 unit (S3)
-              </span>
-            </div>
+      {/* Executive Fleet Telemetry Strip */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+        gap: '1rem',
+        marginBottom: '1.5rem'
+      }}>
+        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #38bdf8' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
+            {activeModule === 'shovels' ? 'Shovels Fleet' : 'Drills Fleet'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#f8fafc' }}>
+              {metrics.working}/{metrics.total}
+            </span>
+            <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 600 }}>Working</span>
           </div>
         </div>
-      ) : (
-        <div className="glass-panel mb-6" style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.05) 0%, rgba(0,0,0,0.2) 100%)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                🛠️ Rotary Blast Hole Drills Fleet ({drills.length} Units)
-              </h2>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                3x Sandvik IDM30 (DM11, DM12, DM14) &bull; 2x Atlas Copco REL650 (DM15, DM16)
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.4rem 0.75rem' }}>
-                IDM30: 3 units (150mm)
-              </span>
-              <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', padding: '0.4rem 0.75rem' }}>
-                REL650: 2 units (150mm)
-              </span>
-            </div>
+        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #10b981' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
+            Mechanical Availability
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '0.35rem' }}>
+            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#34d399' }}>
+              {metrics.availability.toFixed(1)}%
+            </span>
+          </div>
+          <div style={{ marginTop: '0.45rem', height: '5px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ width: `${metrics.availability}%`, height: '100%', background: '#10b981' }} />
           </div>
         </div>
-      )}
+
+        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #f59e0b' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
+            Cumulative Operating HMR
+          </div>
+          <div style={{ marginTop: '0.35rem' }}>
+            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#fbbf24' }}>
+              {Math.round(metrics.totalHmr).toLocaleString()}
+            </span>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginLeft: '0.35rem' }}>hrs</span>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: `3px solid ${metrics.attention > 0 ? '#f43f5e' : '#64748b'}` }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
+            Units Requiring Attention
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: metrics.attention > 0 ? '#fb7185' : '#94a3b8' }}>
+              {metrics.attention}
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {metrics.attention === 0 ? 'All components nominal' : 'Check warnings / status'}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Equipment Cards Grid */}
-      <div className="grid-dashboard">
-        {displayedMachines.map((machine) => {
-          const isWarning = machine.subassemblies.some(s => s.healthStatus === 'Warning' || s.healthStatus === 'Critical');
-          const badgeClass = machine.status === 'Working' && !isWarning ? 'success' : isWarning ? 'warning' : 'danger';
+      {displayedMachines.length === 0 ? (
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.4rem' }}>No matching equipment</div>
+          <p className="text-sm" style={{ margin: 0 }}>Try clearing your search filter or switching fleet modules.</p>
+        </div>
+      ) : (
+        <div className="grid-dashboard">
+          {displayedMachines.map((machine) => {
+            const isWarning = machine.subassemblies.some(s => s.healthStatus === 'Warning' || s.healthStatus === 'Critical');
+            const badgeClass = machine.status === 'Working' && !isWarning ? 'success' : isWarning || machine.status === 'Under Maintenance' ? 'warning' : 'danger';
+            const topAccent = badgeClass === 'success' ? '#10b981' : badgeClass === 'warning' ? '#f59e0b' : '#f43f5e';
 
-          return (
-            <Link href={`/machines/${machine.id}`} key={machine.id} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'transform 0.2s, border-color 0.2s' }}>
-                <div>
-                  <div className="flex-between mb-2">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.4rem' }}>
-                        {machine.category === 'Shovel' ? '🚜' : '🛠️'}
-                      </span>
-                      <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--accent)' }}>{machine.name}</h2>
-                    </div>
-                    <span className={`badge ${badgeClass}`}>{machine.status}</span>
-                  </div>
-
-                  <div className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-                    {machine.make && <strong>{machine.make} </strong>}
-                    {machine.model}
-                    {machine.capacity && (
-                      <span className="badge" style={{ marginLeft: '0.5rem', background: 'rgba(255,255,255,0.08)', fontSize: '0.75rem', color: '#e2e8f0' }}>
-                        {machine.capacity}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <h3 style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Subassemblies Health
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    {machine.subassemblies.slice(0, 4).map(sub => (
-                      <div key={sub.id} className="flex-between" style={{ fontSize: '0.85rem' }}>
-                        <span style={{ color: '#cbd5e1' }}>{sub.name}</span>
-                        <span style={{ 
-                          color: sub.healthStatus === 'Good' ? 'var(--success)' : sub.healthStatus === 'Warning' ? 'var(--warning)' : 'var(--danger)',
-                          fontWeight: '600'
-                        }}>
-                          {sub.healthStatus}
+            return (
+              <Link href={`/machines/${machine.id}`} key={machine.id} style={{ textDecoration: 'none', color: 'inherit', display: 'flex' }}>
+                <div
+                  className="glass-card-interactive"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    borderTop: `2px solid ${topAccent}`
+                  }}
+                >
+                  <div>
+                    {/* Card Header */}
+                    <div className="flex-between mb-2" style={{ gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                        <span style={{ fontSize: '1.35rem' }} aria-hidden="true">
+                          {machine.category === 'Shovel' ? '🚜' : '🛠️'}
                         </span>
+                        <h2 style={{ margin: 0, fontSize: '1.45rem', color: '#f8fafc', fontWeight: 700 }}>{machine.name}</h2>
                       </div>
-                    ))}
-                    {machine.subassemblies.length > 4 && (
-                      <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                        + {machine.subassemblies.length - 4} more components
+                      <span className={`badge ${badgeClass}`}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} aria-hidden="true" />
+                        {machine.status}
+                      </span>
+                    </div>
+
+                    {/* Make / Model / Capacity */}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                      {machine.make && <strong style={{ color: '#cbd5e1' }}>{machine.make}</strong>}
+                      <span>{machine.model}</span>
+                      {machine.capacity && (
+                        <span style={{
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          borderRadius: '6px',
+                          padding: '0.1rem 0.45rem',
+                          fontSize: '0.74rem',
+                          fontWeight: 600
+                        }}>
+                          {machine.capacity}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Subassembly Mini Health Meters */}
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', marginBottom: '0.55rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      Subassemblies Health
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                      {machine.subassemblies.slice(0, 4).map(sub => {
+                        const pct = sub.lifeExpectancyHours > 0
+                          ? Math.min(100, Math.max(0, 100 - (sub.currentHours / sub.lifeExpectancyHours) * 100))
+                          : 100
+                        const barColor = sub.healthStatus === 'Good' ? '#10b981' : sub.healthStatus === 'Warning' ? '#f59e0b' : '#f43f5e'
+                        return (
+                          <div key={sub.id}>
+                            <div className="flex-between" style={{ fontSize: '0.8rem', marginBottom: '0.2rem' }}>
+                              <span style={{ color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                                {sub.name}
+                              </span>
+                              <span style={{ color: barColor, fontWeight: 600, fontSize: '0.74rem' }}>
+                                {sub.healthStatus}
+                              </span>
+                            </div>
+                            <div style={{ height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '999px' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {machine.subassemblies.length > 4 && (
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.76rem', marginTop: '0.1rem' }}>
+                          + {machine.subassemblies.length - 4} more component{machine.subassemblies.length - 4 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Running HMR
                       </div>
-                    )}
+                      <strong className="tabular-nums" style={{ fontSize: '1.15rem', color: '#38bdf8' }}>
+                        {machine.runningHours.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hrs
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>
+                      Inspect &rarr;
+                    </span>
                   </div>
                 </div>
-                
-                <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  <div className="flex-between text-sm">
-                    <span style={{ color: 'var(--text-secondary)' }}>Total Running HMR</span>
-                    <strong style={{ fontSize: '1.1rem', fontFamily: 'Outfit, sans-serif', color: '#38bdf8' }}>
-                      {machine.runningHours.toFixed(1)} hrs
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </main>
-  );
+  )
 }

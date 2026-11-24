@@ -44,35 +44,42 @@ export default function HmrRegisterView({
   }
 
   return (
-    <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '2rem 1rem' }}>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.75rem 1.5rem 3rem' }}>
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.25rem', margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Fleet Overview / HMR Register
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#38bdf8',
+            marginBottom: '0.3rem'
+          }}>
+            Daily Service &amp; Hour Meter Tracking
+          </div>
+          <h1 style={{ margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Fleet Overview &amp; HMR Register
           </h1>
-          <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Live machine-wise daily HMR tracking, service intervals & fitter completion registry
+          <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Live machine-wise daily HMR entry with auto-save, interval countdown, and fitter completion log
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/maintenance-status"
-            className="btn"
-            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'rgba(255, 255, 255, 0.05)' }}
-          >
+        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link href="/maintenance-status" className="btn btn-secondary">
             Maintenance Control
           </Link>
           <Link
-            href="/mobile-hmr"
+            href={`/mobile-hmr?module=${activeModule}`}
             className="btn"
-            style={{ 
-              padding: '0.5rem 1.1rem', 
-              fontSize: '0.875rem', 
-              background: 'rgba(56, 189, 248, 0.15)', 
-              color: '#38bdf8', 
-              border: '1px solid rgba(56, 189, 248, 0.4)',
+            style={{
+              background: 'rgba(56, 189, 248, 0.14)',
+              color: '#38bdf8',
+              borderColor: 'rgba(56, 189, 248, 0.35)',
               fontWeight: 600
             }}
           >
@@ -84,79 +91,88 @@ export default function HmrRegisterView({
         </div>
       </div>
 
-      {/* Module Navigation Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.75rem', 
-        marginBottom: '2rem', 
-        borderBottom: '1px solid var(--border)',
-        paddingBottom: '0.75rem'
-      }}>
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('shovels')}
+      {/* Segmented Module Tabs */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div
+          role="tablist"
+          aria-label="Equipment Register Category"
           style={{
             display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '10px',
-            fontSize: '1.05rem',
-            cursor: 'pointer',
-            fontWeight: activeModule === 'shovels' ? 700 : 500,
-            background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'shovels' ? '#38bdf8' : 'var(--text-secondary)',
-            border: activeModule === 'shovels' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
-            boxShadow: activeModule === 'shovels' ? '0 0 15px rgba(56, 189, 248, 0.2)' : 'none',
-            transition: 'all 0.2s ease'
+            gap: '0.4rem',
+            padding: '0.3rem',
+            borderRadius: '12px',
+            background: 'rgba(6, 10, 20, 0.65)',
+            border: '1px solid var(--border)'
           }}
         >
-          <span style={{ fontSize: '1.3rem' }}>🚜</span>
-          <span>Shovels Module</span>
-          <span style={{ 
-            background: activeModule === 'shovels' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-            color: activeModule === 'shovels' ? '#0f172a' : '#cbd5e1',
-            borderRadius: '999px',
-            padding: '0.15rem 0.55rem',
-            fontSize: '0.8rem',
-            fontWeight: 700
-          }}>
-            {shovels.length}
-          </span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeModule === 'shovels'}
+            onClick={() => handleTabSwitch('shovels')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              padding: '0.55rem 1.2rem',
+              borderRadius: '9px',
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              fontWeight: activeModule === 'shovels' ? 700 : 500,
+              background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
+              color: activeModule === 'shovels' ? '#f8fafc' : 'var(--text-secondary)',
+              border: activeModule === 'shovels' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>🚜</span>
+            <span>Shovels Module</span>
+            <span className="tabular-nums" style={{
+              background: activeModule === 'shovels' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+              color: activeModule === 'shovels' ? '#060a14' : '#cbd5e1',
+              borderRadius: '999px',
+              padding: '0.1rem 0.5rem',
+              fontSize: '0.74rem',
+              fontWeight: 700
+            }}>
+              {shovels.length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('drills')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '10px',
-            fontSize: '1.05rem',
-            cursor: 'pointer',
-            fontWeight: activeModule === 'drills' ? 700 : 500,
-            background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'drills' ? '#38bdf8' : 'var(--text-secondary)',
-            border: activeModule === 'drills' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
-            boxShadow: activeModule === 'drills' ? '0 0 15px rgba(56, 189, 248, 0.2)' : 'none',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <span style={{ fontSize: '1.3rem' }}>🛠️</span>
-          <span>Drills Module</span>
-          <span style={{ 
-            background: activeModule === 'drills' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-            color: activeModule === 'drills' ? '#0f172a' : '#cbd5e1',
-            borderRadius: '999px',
-            padding: '0.15rem 0.55rem',
-            fontSize: '0.8rem',
-            fontWeight: 700
-          }}>
-            {drills.length}
-          </span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeModule === 'drills'}
+            onClick={() => handleTabSwitch('drills')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              padding: '0.55rem 1.2rem',
+              borderRadius: '9px',
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              fontWeight: activeModule === 'drills' ? 700 : 500,
+              background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
+              color: activeModule === 'drills' ? '#f8fafc' : 'var(--text-secondary)',
+              border: activeModule === 'drills' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>🛠️</span>
+            <span>Drills Module</span>
+            <span className="tabular-nums" style={{
+              background: activeModule === 'drills' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+              color: activeModule === 'drills' ? '#060a14' : '#cbd5e1',
+              borderRadius: '999px',
+              padding: '0.1rem 0.5rem',
+              fontSize: '0.74rem',
+              fontWeight: 700
+            }}>
+              {drills.length}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Page 1: HMR Register with Auto-save & KPI Cards */}

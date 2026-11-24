@@ -51,6 +51,7 @@ export default function HmrRegisterTable({
   const [localHmr, setLocalHmr] = useState<{ [machineId: string]: number }>({})
   const [saveStatus, setSaveStatus] = useState<{ [machineId: string]: 'idle' | 'saving' | 'saved' | 'error' }>({})
   const [filter, setFilter] = useState<'all' | 'more50' | 'within50' | 'due' | 'notConfigured'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Completion Modal State
   const [completingMachine, setCompletingMachine] = useState<MachineWithSchedule | null>(null)
@@ -222,6 +223,13 @@ export default function HmrRegisterTable({
 
   // Filter rows
   const filteredRows = processedRows.filter(row => {
+    const q = searchQuery.trim().toLowerCase()
+    const matchesSearch = !q ||
+      row.machine.name.toLowerCase().includes(q) ||
+      row.machine.model.toLowerCase().includes(q) ||
+      (row.machine.capacity && row.machine.capacity.toLowerCase().includes(q))
+    if (!matchesSearch) return false
+
     if (filter === 'all') return true
     if (filter === 'more50') return row.isConfigured && row.hoursDue > 50
     if (filter === 'within50') return row.isConfigured && row.hoursDue > 0 && row.hoursDue <= 50
@@ -272,52 +280,63 @@ export default function HmrRegisterTable({
   const recordedCount = processedRows.filter(r => r.isConfigured && r.lastHmr > 0).length
   const notConfiguredCount = processedRows.filter(r => !r.isConfigured).length
 
+  const overdueCount = processedRows.filter(r => r.isConfigured && r.hoursDue <= 0).length
+  const dueSoonCount = processedRows.filter(r => r.isConfigured && r.hoursDue > 0 && r.hoursDue <= 50).length
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Metric Cards Row: Maintenance at a glance */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.15rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
             <span>Maintenance at a glance</span>
           </h2>
-          <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.25)', fontSize: '0.8rem' }}>
-            {totalCount} {activeModule === 'shovels' ? 'hydraulic shovels' : 'blast hole drills'}
-          </span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {overdueCount > 0 && (
+              <span className="badge danger tabular-nums">{overdueCount} overdue</span>
+            )}
+            {dueSoonCount > 0 && (
+              <span className="badge warning tabular-nums">{dueSoonCount} within 50h</span>
+            )}
+            <span className="badge accent tabular-nums">
+              {totalCount} {activeModule === 'shovels' ? 'hydraulic shovels' : 'blast hole drills'}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
+          <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #94a3b8' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
               Total {activeModule === 'shovels' ? 'shovels' : 'drills'}
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#f8fafc', fontFamily: 'Outfit, sans-serif' }}>
+            <div className="tabular-nums" style={{ fontSize: '1.9rem', fontWeight: 700, color: '#f8fafc' }}>
               {totalCount}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+          <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #38bdf8' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
               HMR updated
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#38bdf8', fontFamily: 'Outfit, sans-serif' }}>
+            <div className="tabular-nums" style={{ fontSize: '1.9rem', fontWeight: 700, color: '#38bdf8' }}>
               {updatedCount}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+          <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #10b981' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
               Last service recorded
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981', fontFamily: 'Outfit, sans-serif' }}>
+            <div className="tabular-nums" style={{ fontSize: '1.9rem', fontWeight: 700, color: '#34d399' }}>
               {recordedCount}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+          <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: `3px solid ${notConfiguredCount > 0 ? '#f43f5e' : '#64748b'}` }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
               Not configured
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: notConfiguredCount > 0 ? '#f43f5e' : '#94a3b8', fontFamily: 'Outfit, sans-serif' }}>
+            <div className="tabular-nums" style={{ fontSize: '1.9rem', fontWeight: 700, color: notConfiguredCount > 0 ? '#fb7185' : '#94a3b8' }}>
               {notConfiguredCount}
             </div>
           </div>
@@ -325,15 +344,15 @@ export default function HmrRegisterTable({
       </div>
 
       {/* Main Register Container */}
-      <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '20px' }}>
+      <div className="glass-panel" style={{ padding: '1.4rem' }}>
         {/* Table Title & Formula Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.15rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.35rem', margin: '0 0 0.35rem 0', fontWeight: 700, color: '#f8fafc' }}>
+            <h2 style={{ fontSize: '1.3rem', margin: '0 0 0.25rem 0', fontWeight: 700, color: '#f8fafc' }}>
               {activeModule === 'shovels' ? '🚜 Shovels' : '🛠️ Drills'} HMR Register
             </h2>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-              {activeModule === 'shovels' 
+            <div style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
+              {activeModule === 'shovels'
                 ? 'EX1200/SANY 500h; BE1000/PC450/EX200 250h. Hours due = Last HMR + Interval - Current HMR.'
                 : 'IDM30 / REL650: 250h Engine, 500h Compressor, 1000h Hydraulic. Hours due = Last HMR + Interval - Current HMR.'
               }
@@ -342,121 +361,150 @@ export default function HmrRegisterTable({
 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
+              type="button"
               onClick={handleExportCsv}
-              className="btn"
-              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255, 255, 255, 0.05)' }}
+              className="btn btn-secondary"
+              style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
             >
               ↓ Export CSV
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (typeof window !== 'undefined') window.location.reload()
               }}
-              className="btn"
-              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255, 255, 255, 0.05)' }}
+              className="btn btn-secondary"
+              style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
             >
               ↻ Refresh
             </button>
           </div>
         </div>
 
-        {/* Filter Pills Bar */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '999px',
-              fontSize: '0.85rem',
-              fontWeight: filter === 'all' ? 700 : 500,
-              border: filter === 'all' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: filter === 'all' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-              color: filter === 'all' ? '#38bdf8' : 'var(--text-secondary)',
-              cursor: 'pointer'
-            }}
-          >
-            Show All ({processedRows.length})
-          </button>
+        {/* Filter Pills + Search Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              style={{
+                padding: '0.42rem 0.9rem',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: filter === 'all' ? 700 : 500,
+                border: filter === 'all' ? '1px solid #38bdf8' : '1px solid var(--border)',
+                background: filter === 'all' ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                color: filter === 'all' ? '#38bdf8' : 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Show All ({processedRows.length})
+            </button>
 
-          <button
-            onClick={() => setFilter('more50')}
-            style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '999px',
-              fontSize: '0.85rem',
-              fontWeight: filter === 'more50' ? 700 : 500,
-              border: filter === 'more50' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: filter === 'more50' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-              color: filter === 'more50' ? '#34d399' : 'var(--text-secondary)',
-              cursor: 'pointer'
-            }}
-          >
-            More than 50h left ({processedRows.filter(r => r.isConfigured && r.hoursDue > 50).length})
-          </button>
+            <button
+              type="button"
+              onClick={() => setFilter('more50')}
+              style={{
+                padding: '0.42rem 0.9rem',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: filter === 'more50' ? 700 : 500,
+                border: filter === 'more50' ? '1px solid #10b981' : '1px solid var(--border)',
+                background: filter === 'more50' ? 'rgba(16, 185, 129, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                color: filter === 'more50' ? '#34d399' : 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              More than 50h left ({processedRows.filter(r => r.isConfigured && r.hoursDue > 50).length})
+            </button>
 
-          <button
-            onClick={() => setFilter('within50')}
-            style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '999px',
-              fontSize: '0.85rem',
-              fontWeight: filter === 'within50' ? 700 : 500,
-              border: filter === 'within50' ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: filter === 'within50' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-              color: filter === 'within50' ? '#fbbf24' : 'var(--text-secondary)',
-              cursor: 'pointer'
-            }}
-          >
-            Within 50h ({processedRows.filter(r => r.isConfigured && r.hoursDue > 0 && r.hoursDue <= 50).length})
-          </button>
+            <button
+              type="button"
+              onClick={() => setFilter('within50')}
+              style={{
+                padding: '0.42rem 0.9rem',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: filter === 'within50' ? 700 : 500,
+                border: filter === 'within50' ? '1px solid #f59e0b' : '1px solid var(--border)',
+                background: filter === 'within50' ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                color: filter === 'within50' ? '#fbbf24' : 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Within 50h ({dueSoonCount})
+            </button>
 
-          <button
-            onClick={() => setFilter('due')}
-            style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '999px',
-              fontSize: '0.85rem',
-              fontWeight: filter === 'due' ? 700 : 500,
-              border: filter === 'due' ? '1px solid #f43f5e' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: filter === 'due' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-              color: filter === 'due' ? '#fb7185' : 'var(--text-secondary)',
-              cursor: 'pointer'
-            }}
-          >
-            Due or overdue ({processedRows.filter(r => r.isConfigured && r.hoursDue <= 0).length})
-          </button>
+            <button
+              type="button"
+              onClick={() => setFilter('due')}
+              style={{
+                padding: '0.42rem 0.9rem',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: filter === 'due' ? 700 : 500,
+                border: filter === 'due' ? '1px solid #f43f5e' : '1px solid var(--border)',
+                background: filter === 'due' ? 'rgba(244, 63, 94, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                color: filter === 'due' ? '#fb7185' : 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Due or overdue ({overdueCount})
+            </button>
 
-          <button
-            onClick={() => setFilter('notConfigured')}
+            <button
+              type="button"
+              onClick={() => setFilter('notConfigured')}
+              style={{
+                padding: '0.42rem 0.9rem',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: filter === 'notConfigured' ? 700 : 500,
+                border: filter === 'notConfigured' ? '1px solid rgba(255,255,255,0.35)' : '1px solid var(--border)',
+                background: filter === 'notConfigured' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                color: filter === 'notConfigured' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Not configured ({notConfiguredCount})
+            </button>
+          </div>
+
+          <input
+            type="search"
+            aria-label="Search register table"
+            placeholder="Search ID or model..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '999px',
-              fontSize: '0.85rem',
-              fontWeight: filter === 'notConfigured' ? 700 : 500,
-              border: filter === 'notConfigured' ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
-              background: filter === 'notConfigured' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-              color: filter === 'notConfigured' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer'
+              margin: 0,
+              width: 'min(100%, 210px)',
+              padding: '0.42rem 0.8rem',
+              fontSize: '0.83rem'
             }}
-          >
-            Not configured ({notConfiguredCount})
-          </button>
+          />
         </div>
 
         {/* Live HMR Register Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '880px' }}>
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label={`${activeModule === 'shovels' ? 'Shovels' : 'Drills'} HMR Register`}
+          className="table-wrapper"
+          style={{ border: '1px solid var(--border)', background: 'rgba(6, 10, 20, 0.35)' }}
+        >
+          <table className="hemmms-table" style={{ minWidth: '920px' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.78rem', letterSpacing: '0.05em' }}>
-                <th style={{ padding: '0.75rem 1rem' }}>{activeModule === 'shovels' ? 'SHOVEL' : 'DRILL'}</th>
-                <th style={{ padding: '0.75rem 1rem' }}>MODEL</th>
-                <th style={{ padding: '0.75rem 1rem' }}>BUCKET / CAPACITY</th>
-                <th style={{ padding: '0.75rem 1rem' }}>LAST HMR</th>
-                <th style={{ padding: '0.75rem 1rem', minWidth: '170px' }}>CURRENT HMR</th>
-                <th style={{ padding: '0.75rem 1rem' }}>INTERVAL</th>
-                <th style={{ padding: '0.75rem 1rem' }}>USED HRS</th>
-                <th style={{ padding: '0.75rem 1rem' }}>HOURS DUE</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>ACTION</th>
+              <tr>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>{activeModule === 'shovels' ? 'SHOVEL' : 'DRILL'}</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>MODEL</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>BUCKET / CAPACITY</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>LAST HMR</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem', minWidth: '175px' }}>CURRENT HMR</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>INTERVAL</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem' }}>USED HRS</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem', minWidth: '165px' }}>HOURS DUE</th>
+                <th scope="col" style={{ padding: '0.8rem 1rem', textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
@@ -471,19 +519,23 @@ export default function HmrRegisterTable({
                   const status = saveStatus[machine.id] || 'idle'
                   const isOverdue = isConfigured && hoursDue <= 0
                   const isDueSoon = isConfigured && hoursDue > 0 && hoursDue <= 50
+                  const usedPct = interval > 0 ? Math.min(100, Math.max(0, (usedHours / interval) * 100)) : 0
+                  const barColor = isOverdue ? '#f43f5e' : isDueSoon ? '#f59e0b' : '#10b981'
 
                   return (
                     <tr
                       key={machine.id}
                       style={{
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                        transition: 'background 0.15s ease'
+                        background: isOverdue ? 'rgba(244, 63, 94, 0.04)' : isDueSoon ? 'rgba(245, 158, 11, 0.03)' : undefined,
+                        boxShadow: isOverdue
+                          ? 'inset 3px 0 0 #f43f5e'
+                          : isDueSoon
+                          ? 'inset 3px 0 0 #f59e0b'
+                          : undefined
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       {/* Name / Link */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
+                      <th scope="row" style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'left' }}>
                         <Link
                           href={`/machines/${machine.id}`}
                           style={{
@@ -498,94 +550,104 @@ export default function HmrRegisterTable({
                         >
                           <span>{machine.name}</span>
                         </Link>
-                      </td>
+                      </th>
 
                       {/* Model */}
-                      <td style={{ padding: '0.85rem 1rem', color: '#cbd5e1', fontWeight: 500 }}>
+                      <td style={{ padding: '0.85rem 1rem', color: '#e2e8f0', fontWeight: 500 }}>
                         {machine.model}
                       </td>
 
                       {/* Capacity / Bucket */}
-                      <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
-                        {machine.capacity || (activeModule === 'shovels' ? '5.0 Cu.M' : '150mm')}
+                      <td style={{ padding: '0.85rem 1rem' }}>
+                        <span style={{
+                          padding: '0.18rem 0.5rem',
+                          borderRadius: '6px',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          color: '#cbd5e1',
+                          fontSize: '0.78rem',
+                          fontWeight: 600
+                        }}>
+                          {machine.capacity || (activeModule === 'shovels' ? '5.0 Cu.M' : '150mm')}
+                        </span>
                       </td>
 
                       {/* Last HMR */}
-                      <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#cbd5e1' }}>
+                      <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#cbd5e1' }}>
                         {lastHmr.toFixed(0)}
                       </td>
 
                       {/* Current HMR (Interactive with Auto-Save) */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={currentHmr}
-                            onChange={(e) => handleHmrChange(machine.id, e.target.value)}
-                            disabled={!canEdit}
-                            style={{
-                              margin: 0,
-                              padding: '0.45rem 0.65rem',
-                              fontSize: '0.95rem',
-                              fontFamily: 'Outfit, monospace',
-                              fontWeight: 600,
-                              background: 'rgba(0, 0, 0, 0.35)',
-                              border: status === 'saving' 
-                                ? '1px solid #f59e0b' 
-                                : status === 'saved' 
-                                ? '1px solid #10b981' 
-                                : '1px solid rgba(255, 255, 255, 0.15)',
-                              borderRadius: '8px',
-                              width: '130px',
-                              color: '#fff'
-                            }}
-                          />
-                          <div style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            {status === 'saving' && (
-                              <span style={{ color: '#fbbf24' }}>● Saving...</span>
-                            )}
-                            {status === 'saved' && (
-                              <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Auto-saved</span>
-                            )}
-                            {status === 'idle' && (
-                              <span style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>Auto-save</span>
-                            )}
-                            {status === 'error' && (
-                              <span style={{ color: '#fb7185' }}>⚠ Save failed</span>
-                            )}
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <input
+                              type="number"
+                              step="0.1"
+                              aria-label={`Current HMR for ${machine.name}`}
+                              value={currentHmr}
+                              onChange={(e) => handleHmrChange(machine.id, e.target.value)}
+                              disabled={!canEdit}
+                              className="tabular-nums"
+                              style={{
+                                margin: 0,
+                                padding: '0.42rem 0.65rem',
+                                fontSize: '0.94rem',
+                                fontWeight: 600,
+                                background: 'rgba(6, 10, 20, 0.72)',
+                                border: status === 'saving'
+                                  ? '1px solid #f59e0b'
+                                  : status === 'saved'
+                                  ? '1px solid #10b981'
+                                  : status === 'error'
+                                  ? '1px solid #f43f5e'
+                                  : '1px solid rgba(148, 163, 184, 0.25)',
+                                borderRadius: '8px',
+                                width: '126px',
+                                color: '#fff'
+                              }}
+                            />
+                          </div>
+                          <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.3rem', height: '14px' }}>
+                            {status === 'saving' && <span style={{ color: '#fbbf24' }}>● Saving...</span>}
+                            {status === 'saved' && <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Auto-saved</span>}
+                            {status === 'idle' && <span style={{ color: '#64748b' }}>Auto-save</span>}
+                            {status === 'error' && <span style={{ color: '#fb7185' }}>⚠ Save failed</span>}
                           </div>
                         </div>
                       </td>
 
                       {/* Interval */}
-                      <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
-                        {interval}
+                      <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                        {interval}h
                       </td>
 
                       {/* Used Hrs */}
-                      <td style={{ padding: '0.85rem 1rem', fontFamily: 'Outfit, monospace', color: '#e2e8f0', fontWeight: 500 }}>
+                      <td className="tabular-nums" style={{ padding: '0.85rem 1rem', color: '#e2e8f0', fontWeight: 600 }}>
                         {usedHours.toFixed(2)}
                       </td>
 
-                      {/* Hours Due */}
+                      {/* Hours Due with Cycle Progress Bar */}
                       <td style={{ padding: '0.85rem 1rem' }}>
                         {!isConfigured ? (
-                          <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                          <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.84rem' }}>
                             Not configured
                           </span>
-                        ) : isOverdue ? (
-                          <span style={{ color: '#f43f5e', fontWeight: 700, fontFamily: 'Outfit, monospace', fontSize: '0.95rem' }}>
-                            {Math.abs(hoursDue).toFixed(2)} overdue
-                          </span>
-                        ) : isDueSoon ? (
-                          <span style={{ color: '#fbbf24', fontWeight: 600, fontFamily: 'Outfit, monospace', fontSize: '0.95rem' }}>
-                            {hoursDue.toFixed(2)} hrs left
-                          </span>
                         ) : (
-                          <span style={{ color: '#34d399', fontWeight: 600, fontFamily: 'Outfit, monospace', fontSize: '0.95rem' }}>
-                            {hoursDue.toFixed(2)} hrs left
-                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.32rem' }}>
+                            <span
+                              className="tabular-nums"
+                              style={{
+                                color: isOverdue ? '#fb7185' : isDueSoon ? '#fbbf24' : '#34d399',
+                                fontWeight: isOverdue ? 700 : 600,
+                                fontSize: '0.9rem'
+                              }}
+                            >
+                              {isOverdue ? `${Math.abs(hoursDue).toFixed(2)} overdue` : `${hoursDue.toFixed(2)} hrs left`}
+                            </span>
+                            <div style={{ width: '115px', height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                              <div style={{ width: `${usedPct}%`, height: '100%', background: barColor, borderRadius: '999px' }} />
+                            </div>
+                          </div>
                         )}
                       </td>
 
@@ -593,23 +655,24 @@ export default function HmrRegisterTable({
                       <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                           <button
+                            type="button"
                             onClick={() => handleOpenCompletion(machine)}
                             className="btn"
                             disabled={!canEdit}
                             style={{
                               padding: '0.35rem 0.85rem',
-                              fontSize: '0.82rem',
+                              minBlockSize: '32px',
+                              fontSize: '0.8rem',
                               borderRadius: '8px',
-                              background: isOverdue ? 'rgba(244, 63, 94, 0.2)' : 'rgba(56, 189, 248, 0.1)',
+                              background: isOverdue ? 'rgba(244, 63, 94, 0.2)' : 'rgba(56, 189, 248, 0.12)',
                               color: isOverdue ? '#fb7185' : '#38bdf8',
-                              border: isOverdue ? '1px solid rgba(244, 63, 94, 0.4)' : '1px solid rgba(56, 189, 248, 0.3)',
-                              cursor: canEdit ? 'pointer' : 'not-allowed'
+                              borderColor: isOverdue ? 'rgba(244, 63, 94, 0.4)' : 'rgba(56, 189, 248, 0.35)'
                             }}
                           >
                             Pending ▾
                           </button>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
-                            Auto-save
+                          <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                            Record service
                           </span>
                         </div>
                       </td>
@@ -636,8 +699,8 @@ export default function HmrRegisterTable({
             </div>
           )}
 
-          <form onSubmit={handleSaveCompletion} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '0.85rem', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+          <form onSubmit={handleSaveCompletion} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '0.85rem', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.2)', marginBottom: '0.75rem' }}>
               <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Equipment Details:</div>
               <div style={{ fontSize: '1rem', fontWeight: 600, color: '#f8fafc', marginTop: '0.25rem' }}>
                 {completingMachine.name} &bull; {completingMachine.model} ({completingMachine.capacity || 'Standard'})

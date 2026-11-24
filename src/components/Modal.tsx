@@ -1,39 +1,85 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useId, useRef } from 'react'
 
-export default function Modal({ 
-  isOpen, 
-  onClose, 
-  title, 
-  maxWidth = '400px',
-  children 
-}: { 
-  isOpen: boolean, 
-  onClose: () => void, 
-  title: string, 
-  maxWidth?: string,
-  children: React.ReactNode 
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  maxWidth = '420px',
+  children
+}: {
+  isOpen: boolean
+  onClose: () => void
+  title: string
+  maxWidth?: string
+  children: React.ReactNode
 }) {
-  if (!isOpen) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const pressedOutsideRef = useRef(false)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal()
+      }
+    } else {
+      if (dialog.open) {
+        dialog.close()
+      }
+    }
+  }, [isOpen])
+
+  const isOutsideRect = (e: React.PointerEvent<HTMLDialogElement>, dialog: HTMLDialogElement) => {
+    const r = dialog.getBoundingClientRect()
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom
+  }
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 100, backdropFilter: 'blur(4px)', padding: '1rem'
-    }}>
-      <div className="glass-panel" style={{ width: maxWidth, maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
-        <button 
-          onClick={onClose} 
-          style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}
-        >
-          &times;
-        </button>
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.25rem', paddingRight: '1.5rem' }}>{title}</h2>
-        {children}
-      </div>
-    </div>
+    <dialog
+      ref={dialogRef}
+      className="hemmms-dialog"
+      aria-labelledby={titleId}
+      style={{ width: maxWidth }}
+      onClose={() => {
+        if (isOpen) onClose()
+      }}
+      onPointerDown={(e) => {
+        const dialog = dialogRef.current
+        if (!dialog) return
+        pressedOutsideRef.current = isOutsideRect(e, dialog)
+      }}
+      onPointerUp={(e) => {
+        const dialog = dialogRef.current
+        if (!dialog) return
+        if (pressedOutsideRef.current && isOutsideRect(e, dialog)) {
+          dialog.close()
+        }
+        pressedOutsideRef.current = false
+      }}
+    >
+      {isOpen && (
+        <div className="dialog-inner">
+          <div className="dialog-header">
+            <h2 id={titleId} style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="dialog-close-btn"
+              aria-label="Close modal"
+            >
+              &times;
+            </button>
+          </div>
+          {children}
+        </div>
+      )}
+    </dialog>
   )
 }
