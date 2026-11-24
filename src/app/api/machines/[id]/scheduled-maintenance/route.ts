@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { deductSparePartsInTx } from '@/lib/spares'
 
 export async function GET(
   request: Request,
@@ -69,12 +70,19 @@ export async function PATCH(
       lastMaintenanceHmr,
       performedBy,
       partsUsed,
+      deductedParts,
       timeSpentHrs,
       cost,
       description
     } = await request.json()
 
     const updated = await prisma.$transaction(async (tx) => {
+      const { formattedPartsUsed, lowStockAlerts } = await deductSparePartsInTx(
+        tx,
+        deductedParts,
+        partsUsed
+      )
+
       const schedule = await tx.scheduledMaintenance.update({
         where: {
           machineId_type: {
@@ -108,18 +116,25 @@ export async function PATCH(
           hmr: parseFloat(lastMaintenanceHmr),
           status: 'Completed',
           performedBy: performedBy || null,
-          partsUsed: partsUsed || null,
+          partsUsed: formattedPartsUsed,
           timeSpentHrs: timeSpentHrs ? parseFloat(timeSpentHrs) : null,
           cost: cost ? parseFloat(cost) : null
         }
       })
 
-      return schedule
+      return { schedule, lowStockAlerts }
     })
     
-    return NextResponse.json(updated)
+    return NextResponse.json({
+      ...updated.schedule,
+      lowStockAlerts: updated.lowStockAlerts
+    })
   } catch (error: any) {
     console.error('Scheduled Maintenance PATCH Error:', error)
-    return NextResponse.json({ error: error.message || 'Failed to update' }, { status: 500 })
+    const msg = error?.message || 'Failed to update'
+    if (msg.startsWith('Insufficient stock') || msg.startsWith('Spare part not found')) {
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

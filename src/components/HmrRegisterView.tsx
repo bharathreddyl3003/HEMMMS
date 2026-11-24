@@ -5,11 +5,13 @@ import Link from 'next/link'
 import HmrRegisterTable, { MachineWithSchedule } from './HmrRegisterTable'
 import MaintenanceCompletionRegistry, { CompletionRecord } from './MaintenanceCompletionRegistry'
 import AddMachineModal from './AddMachineModal'
+import type { SparePartOption } from './SparePartUsageSelector'
 
 interface HmrRegisterViewProps {
   shovels: MachineWithSchedule[]
   drills: MachineWithSchedule[]
   initialCompletions: CompletionRecord[]
+  spareParts?: SparePartOption[]
   activeModule: 'shovels' | 'drills'
   canEdit: boolean
 }
@@ -18,6 +20,7 @@ export default function HmrRegisterView({
   shovels,
   drills,
   initialCompletions,
+  spareParts = [],
   activeModule: initialActiveModule,
   canEdit
 }: HmrRegisterViewProps) {
@@ -161,6 +164,7 @@ export default function HmrRegisterView({
         machines={activeMachines}
         activeModule={activeModule}
         canEdit={canEdit}
+        spareParts={spareParts}
         onCompletionAdded={handleCompletionAdded}
       />
 

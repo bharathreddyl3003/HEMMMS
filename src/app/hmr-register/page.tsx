@@ -15,8 +15,8 @@ export default async function HmrRegisterPage(props: {
   const activeModule = searchParams.module === 'drills' ? 'drills' : 'shovels'
   const canEdit = session.role === 'ADMIN' || !!session.permissions?.canEditMachines
 
-  // Fetch machines and completion records in parallel for maximum performance
-  const [allMachines, initialCompletions] = await Promise.all([
+  // Fetch machines, completion records, and spare parts in parallel for maximum performance
+  const [allMachines, initialCompletions, spareParts] = await Promise.all([
     prisma.machine.findMany({
       include: {
         scheduledMaintenances: true
@@ -41,6 +41,11 @@ export default async function HmrRegisterPage(props: {
         createdAt: 'desc'
       },
       take: 50
+    }),
+    prisma.sparePart.findMany({
+      orderBy: {
+        name: 'asc'
+      }
     })
   ])
 
@@ -54,6 +59,7 @@ export default async function HmrRegisterPage(props: {
         shovels={shovels as any}
         drills={drills as any}
         initialCompletions={initialCompletions as any}
+        spareParts={spareParts}
         activeModule={activeModule}
         canEdit={canEdit}
       />

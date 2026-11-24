@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Modal from './Modal'
+import SparePartUsageSelector, { SparePartOption, SelectedSpareUsage } from './SparePartUsageSelector'
+import LowStockAlertModal from './LowStockAlertModal'
+import type { LowStockAlert } from '@/lib/spares'
 
 export interface MachineWithSchedule {
   id: string
@@ -26,6 +29,7 @@ interface HmrRegisterTableProps {
   machines: MachineWithSchedule[]
   activeModule: 'shovels' | 'drills'
   canEdit: boolean
+  spareParts?: SparePartOption[]
   onCompletionAdded?: () => void
 }
 
@@ -40,6 +44,7 @@ export default function HmrRegisterTable({
   machines,
   activeModule,
   canEdit,
+  spareParts = [],
   onCompletionAdded
 }: HmrRegisterTableProps) {
   // Local state for machine HMRs to allow instant typing & recalculation
@@ -54,6 +59,10 @@ export default function HmrRegisterTable({
   const [completionInterval, setCompletionInterval] = useState<number>(250)
   const [completionDate, setCompletionDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [completionNotes, setCompletionNotes] = useState('')
+  const [selectedParts, setSelectedParts] = useState<SelectedSpareUsage[]>([])
+  const [manualPartsUsed, setManualPartsUsed] = useState('')
+  const [availableSpares, setAvailableSpares] = useState<SparePartOption[]>(spareParts)
+  const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlert[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [completionError, setCompletionError] = useState('')
 
@@ -121,6 +130,8 @@ export default function HmrRegisterTable({
     setFitterName(COMMON_FITTERS[0])
     setCompletionNotes(`Engine Scheduled Maintenance (${schedule?.intervalHrs || 250}h)`)
     setCompletionDate(new Date().toISOString().slice(0, 10))
+    setSelectedParts([])
+    setManualPartsUsed('')
     setCompletionError('')
   }
 
@@ -142,13 +153,25 @@ export default function HmrRegisterTable({
           interval: completionInterval,
           type: 'Engine',
           description: completionNotes,
-          date: new Date(completionDate).toISOString()
+          date: new Date(completionDate).toISOString(),
+          partsUsed: manualPartsUsed,
+          deductedParts: selectedParts
         })
       })
 
+      const data = await res.json()
       if (!res.ok) {
-        const data = await res.json()
         throw new Error(data.error || 'Failed to record completion')
+      }
+
+      // Update local spare stock quantities immediately
+      if (selectedParts.length > 0) {
+        setAvailableSpares(prev =>
+          prev.map(sp => {
+            const used = selectedParts.find(p => p.sparePartId === sp.id)
+            return used ? { ...sp, stockQuantity: Math.max(0, sp.stockQuantity - used.quantity) } : sp
+          })
+        )
       }
 
       // Update machine schedule in place
@@ -162,6 +185,11 @@ export default function HmrRegisterTable({
       setCompletingMachine(null)
       if (onCompletionAdded) {
         onCompletionAdded()
+      }
+
+      // Show Low Stock Alert Modal if any deducted spare dropped <= reorderLevel
+      if (Array.isArray(data.lowStockAlerts) && data.lowStockAlerts.length > 0) {
+        setLowStockAlerts(data.lowStockAlerts)
       }
     } catch (err: any) {
       setCompletionError(err.message || 'Error recording completion')
@@ -600,6 +628,7 @@ export default function HmrRegisterTable({
           isOpen={!!completingMachine}
           onClose={() => setCompletingMachine(null)}
           title={`Record Service Completion — ${completingMachine.name}`}
+          maxWidth="560px"
         >
           {completionError && (
             <div className="badge danger mb-4" style={{ display: 'block' }}>
@@ -675,6 +704,14 @@ export default function HmrRegisterTable({
               />
             </div>
 
+            <SparePartUsageSelector
+              initialSpares={availableSpares}
+              selectedParts={selectedParts}
+              onChange={setSelectedParts}
+              manualNotes={manualPartsUsed}
+              onManualNotesChange={setManualPartsUsed}
+            />
+
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button
                 type="button"
@@ -695,6 +732,12 @@ export default function HmrRegisterTable({
           </form>
         </Modal>
       )}
+
+      {/* Low Stock Alert & 1-Click PR Modal */}
+      <LowStockAlertModal
+        alerts={lowStockAlerts}
+        onClose={() => setLowStockAlerts([])}
+      />
     </div>
   )
 }

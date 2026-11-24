@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Modal from './Modal'
+import SparePartUsageSelector, { SelectedSpareUsage } from './SparePartUsageSelector'
+import LowStockAlertModal from './LowStockAlertModal'
+import type { LowStockAlert } from '@/lib/spares'
 
 type Schedule = {
   id: string
@@ -27,6 +30,9 @@ export default function ScheduledMaintenanceTab({
   // Modal state
   const [activeModalType, setActiveModalType] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedParts, setSelectedParts] = useState<SelectedSpareUsage[]>([])
+  const [manualPartsUsed, setManualPartsUsed] = useState('')
+  const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlert[]>([])
 
   useEffect(() => {
     fetch(`/api/machines/${machineId}/scheduled-maintenance`)
@@ -63,7 +69,8 @@ export default function ScheduledMaintenanceTab({
           lastMaintenanceHmr: serviceHmr,
           description: formData.get('description'),
           performedBy: formData.get('performedBy') || null,
-          partsUsed: formData.get('partsUsed') || null,
+          partsUsed: manualPartsUsed || null,
+          deductedParts: selectedParts,
           timeSpentHrs: formData.get('timeSpentHrs') ? parseFloat(formData.get('timeSpentHrs') as string) : null,
           cost: formData.get('cost') ? parseFloat(formData.get('cost') as string) : null
         })
@@ -73,6 +80,11 @@ export default function ScheduledMaintenanceTab({
         const updated = await res.json()
         setSchedules(prev => prev.map(s => s.type === activeModalType ? updated : s))
         setActiveModalType(null)
+        setSelectedParts([])
+        setManualPartsUsed('')
+        if (Array.isArray(updated.lowStockAlerts) && updated.lowStockAlerts.length > 0) {
+          setLowStockAlerts(updated.lowStockAlerts)
+        }
       } else {
         const data = await res.json()
         alert('Failed to update scheduled maintenance: ' + (data.error || res.statusText))
@@ -184,7 +196,11 @@ export default function ScheduledMaintenanceTab({
                 <button 
                   className={`btn ${isOverdue ? 'btn-danger' : 'btn-primary'}`}
                   style={{ width: '100%', padding: '0.75rem', fontWeight: 600 }}
-                  onClick={() => setActiveModalType(s.type)}
+                  onClick={() => {
+                    setSelectedParts([])
+                    setManualPartsUsed('')
+                    setActiveModalType(s.type)
+                  }}
                 >
                   ✓ Record {s.type} Service Completed
                 </button>
@@ -200,6 +216,7 @@ export default function ScheduledMaintenanceTab({
           isOpen={true} 
           onClose={() => setActiveModalType(null)} 
           title={`Record ${activeModalType} Side Service Completed`}
+          maxWidth="560px"
         >
           <form onSubmit={handleCompleteService} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
@@ -239,14 +256,12 @@ export default function ScheduledMaintenanceTab({
               />
             </div>
 
-            <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Parts / Spares Consumed</label>
-              <input 
-                type="text" 
-                name="partsUsed" 
-                placeholder="e.g. EF-001 (Oil Filter), Engine Oil 25L, Belts" 
-              />
-            </div>
+            <SparePartUsageSelector
+              selectedParts={selectedParts}
+              onChange={setSelectedParts}
+              manualNotes={manualPartsUsed}
+              onManualNotesChange={setManualPartsUsed}
+            />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
@@ -281,6 +296,11 @@ export default function ScheduledMaintenanceTab({
           </form>
         </Modal>
       )}
+
+      <LowStockAlertModal
+        alerts={lowStockAlerts}
+        onClose={() => setLowStockAlerts([])}
+      />
     </>
   )
 }
