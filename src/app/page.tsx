@@ -39,7 +39,22 @@ export default async function Dashboard(props: {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link
+            href={`/hmr-register?module=${activeModule}`}
+            className="btn"
+            style={{ 
+              padding: '0.55rem 1rem', 
+              fontSize: '0.875rem',
+              background: 'rgba(56, 189, 248, 0.12)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}
+          >
+            📋 HMR Register
+          </Link>
           <ScheduleMaintenanceModal machines={allMachines.map(m => ({ id: m.id, name: m.name }))} />
           {canEdit && (
             <AddMachineModal defaultCategory={activeModule === 'shovels' ? 'Shovel' : 'Drill'} />

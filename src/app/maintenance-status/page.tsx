@@ -105,9 +105,14 @@ export default async function MaintenanceStatusPage(props: {
           </p>
         </div>
 
-        <Link href="/" className="btn btn-secondary">
-          &larr; Back to Dashboard
-        </Link>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <Link href="/hmr-register" className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)' }}>
+            📋 HMR Register
+          </Link>
+          <Link href="/" className="btn btn-secondary">
+            &larr; Back to Dashboard
+          </Link>
+        </div>
       </div>
 
       {/* Module Filter Tabs */}
