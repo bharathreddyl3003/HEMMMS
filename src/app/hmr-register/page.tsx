@@ -15,45 +15,44 @@ export default async function HmrRegisterPage(props: {
   const activeModule = searchParams.module === 'drills' ? 'drills' : 'shovels'
   const canEdit = session.role === 'ADMIN' || !!session.permissions?.canEditMachines
 
-  // Fetch all machines with scheduled maintenance and subassemblies
-  const allMachines = await prisma.machine.findMany({
-    include: {
-      scheduledMaintenances: true,
-      subassemblies: true
-    },
-    orderBy: {
-      name: 'asc'
-    }
-  })
+  // Fetch machines and completion records in parallel for maximum performance
+  const [allMachines, initialCompletions] = await Promise.all([
+    prisma.machine.findMany({
+      include: {
+        scheduledMaintenances: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    }),
+    prisma.maintenanceRecord.findMany({
+      where: {
+        logType: 'Scheduled Maintenance',
+        status: 'Completed'
+      },
+      include: {
+        machine: {
+          include: {
+            scheduledMaintenances: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 50
+    })
+  ])
 
   // Group into shovels and drills
   const shovels = allMachines.filter(m => m.category === 'Shovel')
   const drills = allMachines.filter(m => m.category === 'Drill' || !m.category)
 
-  // Fetch initial completion records
-  const initialCompletions = await prisma.maintenanceRecord.findMany({
-    where: {
-      logType: 'Scheduled Maintenance',
-      status: 'Completed'
-    },
-    include: {
-      machine: {
-        include: {
-          scheduledMaintenances: true
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-    take: 50
-  })
-
   return (
     <main>
       <HmrRegisterView
-        shovels={shovels}
-        drills={drills}
+        shovels={shovels as any}
+        drills={drills as any}
         initialCompletions={initialCompletions as any}
         activeModule={activeModule}
         canEdit={canEdit}

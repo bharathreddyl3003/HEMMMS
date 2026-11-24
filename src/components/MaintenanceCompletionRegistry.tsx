@@ -35,17 +35,16 @@ export default function MaintenanceCompletionRegistry({
   category,
   refreshTrigger = 0
 }: MaintenanceCompletionRegistryProps) {
-  const [records, setRecords] = useState<CompletionRecord[]>(initialRecords)
+  const [allRecords, setAllRecords] = useState<CompletionRecord[]>(initialRecords)
   const [loading, setLoading] = useState(false)
 
   const fetchRecords = async () => {
     setLoading(true)
     try {
-      const url = category ? `/api/maintenance/completions?category=${category}` : '/api/maintenance/completions'
-      const res = await fetch(url)
+      const res = await fetch('/api/maintenance/completions')
       if (res.ok) {
         const data = await res.json()
-        setRecords(data.records || [])
+        setAllRecords(data.records || [])
       }
     } catch (err) {
       console.error('Failed to refresh completion registry:', err)
@@ -54,10 +53,17 @@ export default function MaintenanceCompletionRegistry({
     }
   }
 
-  // Refetch when trigger or category changes
+  // Refetch ONLY when an actual completion event occurs (trigger > 0), not on initial mount or tab switch
   useEffect(() => {
-    fetchRecords()
-  }, [refreshTrigger, category])
+    if (refreshTrigger > 0) {
+      fetchRecords()
+    }
+  }, [refreshTrigger])
+
+  // Instant in-memory filtering by category (0ms latency on tab switch)
+  const displayedRecords = category 
+    ? allRecords.filter(r => r.machine?.category === category)
+    : allRecords
 
   return (
     <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '20px', marginTop: '1.5rem' }}>
@@ -75,7 +81,7 @@ export default function MaintenanceCompletionRegistry({
           onClick={fetchRecords}
           disabled={loading}
           className="btn"
-          style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', background: 'rgba(255, 255, 255, 0.05)' }}
+          style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', background: 'rgba(255, 255, 255, 0.05)', cursor: 'pointer' }}
         >
           {loading ? 'Refreshing...' : '↻ Refresh registry'}
         </button>
@@ -97,14 +103,14 @@ export default function MaintenanceCompletionRegistry({
             </tr>
           </thead>
           <tbody>
-            {records.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <tr>
                 <td colSpan={9} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No completed services recorded yet. Completed maintenance will automatically appear here.
+                  No completed services recorded for {category === 'Shovel' ? 'shovels' : 'drills'} yet. Completed maintenance will automatically appear here.
                 </td>
               </tr>
             ) : (
-              records.map(record => {
+              displayedRecords.map(record => {
                 const dateObj = new Date(record.createdAt)
                 const formattedDate = dateObj.toLocaleDateString('en-GB', {
                   day: '2-digit',
@@ -118,7 +124,6 @@ export default function MaintenanceCompletionRegistry({
                 const primarySchedule = record.machine.scheduledMaintenances?.find(s => s.type === 'Engine') || record.machine.scheduledMaintenances?.[0]
                 const interval = primarySchedule?.intervalHrs || 250
                 const currentHmr = record.hmr || 0
-                // Last HMR recorded prior
                 const lastHmr = primarySchedule?.lastMaintenanceHmr || currentHmr
                 const usedHrs = Math.max(0, currentHmr - lastHmr)
                 const dueHrs = interval - usedHrs

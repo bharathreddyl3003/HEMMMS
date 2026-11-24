@@ -21,19 +21,20 @@ export default function TopNav({
 
   return (
     <nav className="top-nav">
-      <Link href="/" style={{ textDecoration: 'none' }}>
+      <Link href="/" prefetch={true} style={{ textDecoration: 'none' }}>
         <div className="nav-logo">HEMMMS</div>
       </Link>
       <div className="nav-links" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link href="/" className={pathname === '/' ? 'active' : ''}>Dashboard</Link>
-        <Link href="/hmr-register" className={pathname === '/hmr-register' ? 'active' : ''}>HMR Register</Link>
-        <Link href="/maintenance-status" className={pathname === '/maintenance-status' ? 'active' : ''}>Maintenance Status</Link>
-        <Link href="/reports" className={pathname === '/reports' ? 'active' : ''}>Reports & Analytics</Link>
-        <Link href="/inventory" className={pathname === '/inventory' ? 'active' : ''}>Inventory & Spares</Link>
-        <Link href="/requisitions" className={pathname === '/requisitions' ? 'active' : ''}>Purchase Requisitions</Link>
+        <Link href="/" prefetch={true} className={pathname === '/' ? 'active' : ''}>Dashboard</Link>
+        <Link href="/hmr-register" prefetch={true} className={pathname === '/hmr-register' ? 'active' : ''}>HMR Register</Link>
+        <Link href="/maintenance-status" prefetch={true} className={pathname === '/maintenance-status' ? 'active' : ''}>Maintenance Status</Link>
+        <Link href="/reports" prefetch={true} className={pathname === '/reports' ? 'active' : ''}>Reports & Analytics</Link>
+        <Link href="/inventory" prefetch={true} className={pathname === '/inventory' ? 'active' : ''}>Inventory & Spares</Link>
+        <Link href="/requisitions" prefetch={true} className={pathname === '/requisitions' ? 'active' : ''}>Purchase Requisitions</Link>
         
         <Link 
           href="/mobile-hmr" 
+          prefetch={true}
           className={pathname === '/mobile-hmr' ? 'active' : ''}
           style={{
             display: 'inline-flex',
@@ -46,7 +47,7 @@ export default function TopNav({
         </Link>
         
         {user.role === 'ADMIN' && (
-          <Link href="/admin/users" className={pathname === '/admin/users' ? 'active' : ''}>Users (Admin)</Link>
+          <Link href="/admin/users" prefetch={true} className={pathname === '/admin/users' ? 'active' : ''}>Users (Admin)</Link>
         )}
         
         <div style={{ width: '1px', height: '24px', background: 'var(--border)' }}></div>

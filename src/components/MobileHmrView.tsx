@@ -68,6 +68,15 @@ export default function MobileHmrView({
     }, 600)
   }
 
+  const handleTabSwitch = (mod: 'shovels' | 'drills') => {
+    setActiveModule(mod)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('module', mod)
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
   // Filter machines by search query
   const filteredMachines = machines.filter(m => {
     if (!searchQuery.trim()) return true
@@ -116,7 +125,8 @@ export default function MobileHmrView({
       {/* Module Switcher Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
         <button
-          onClick={() => setActiveModule('shovels')}
+          type="button"
+          onClick={() => handleTabSwitch('shovels')}
           style={{
             flex: 1,
             padding: '0.65rem 1rem',
@@ -139,7 +149,8 @@ export default function MobileHmrView({
         </button>
 
         <button
-          onClick={() => setActiveModule('drills')}
+          type="button"
+          onClick={() => handleTabSwitch('drills')}
           style={{
             flex: 1,
             padding: '0.65rem 1rem',

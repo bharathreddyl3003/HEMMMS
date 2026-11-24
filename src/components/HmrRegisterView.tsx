@@ -27,6 +27,15 @@ export default function HmrRegisterView({
   const activeMachines = activeModule === 'shovels' ? shovels : drills
   const activeCategory = activeModule === 'shovels' ? 'Shovel' : 'Drill'
 
+  const handleTabSwitch = (mod: 'shovels' | 'drills') => {
+    setActiveModule(mod)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('module', mod)
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
   const handleCompletionAdded = () => {
     setRefreshTrigger(prev => prev + 1)
   }
@@ -81,7 +90,8 @@ export default function HmrRegisterView({
         paddingBottom: '0.75rem'
       }}>
         <button
-          onClick={() => setActiveModule('shovels')}
+          type="button"
+          onClick={() => handleTabSwitch('shovels')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -113,7 +123,8 @@ export default function HmrRegisterView({
         </button>
 
         <button
-          onClick={() => setActiveModule('drills')}
+          type="button"
+          onClick={() => handleTabSwitch('drills')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
