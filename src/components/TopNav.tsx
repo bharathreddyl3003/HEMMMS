@@ -14,7 +14,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: 'grid' },
+  { href: '/hmr-register', label: 'HMR Register', icon: 'clock' },
+  { href: '/maintenance-status', label: 'Maintenance', icon: 'wrench' },
   { href: '/inventory', label: 'Spares', icon: 'box' },
+  { href: '/mobile-hmr', label: 'Field HMR', icon: 'phone', highlight: true },
 ]
 
 export default function TopNav({

@@ -113,18 +113,25 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
     expect(screen.getByText('DM11')).toBeInTheDocument()
 
-    // Switch to Maintenance tab in-place
+    // Switch to Maintenance tab in-place (uses unified Shovels Module / Drills Module naming)
     fireEvent.click(screen.getByRole('tab', { name: /Maintenance/i }))
+    expect(screen.getByRole('tab', { name: /All Fleet/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Shovels Module/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Drills Module/i })).toBeInTheDocument()
     expect(screen.getByText('Filtered Fleet Units')).toBeInTheDocument()
     expect(screen.getByText('10.0h Overdue')).toBeInTheDocument()
 
-    // Switch to HMR Register tab in-place (carries Drills module)
+    // Switch to HMR Register tab in-place (carries Drills Module)
     fireEvent.click(screen.getByRole('tab', { name: /HMR Register/i }))
+    expect(screen.getByRole('tab', { name: /Shovels Module/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Drills Module/i })).toBeInTheDocument()
     expect(screen.getByText('DM11')).toBeInTheDocument()
     expect(screen.queryByText('Fleet Overview & HMR Register')).not.toBeInTheDocument()
 
-    // Switch to Field HMR tab, update DM11 HMR, and verify it propagates back to Equipment Fleet
+    // Switch to Field HMR tab (also uses Shovels Module / Drills Module), update DM11 HMR, and verify it propagates back
     fireEvent.click(screen.getByRole('tab', { name: /Field HMR/i }))
+    expect(screen.getByRole('tab', { name: /Shovels Module/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Drills Module/i })).toBeInTheDocument()
     expect(screen.queryByText('Daily HMR Entry')).not.toBeInTheDocument()
     const fieldInput = screen.getByLabelText('Current HMR')
     fireEvent.change(fieldInput, { target: { value: '29610' } })
@@ -230,17 +237,17 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     expect(screen.getByText('✓ Auto-saved')).toBeInTheDocument()
   })
 
-  it('TopNav renders Dashboard and Spares only for USER, adds Users for ADMIN, omits Dashboard sub-tabs and removed tabs, and toggles mobile menu drawer', () => {
+  it('TopNav keeps Dashboard, HMR Register, Maintenance, Spares, and Field HMR in menu bar, shows Users only for ADMIN, and toggles mobile menu drawer', () => {
     const { rerender } = render(<TopNav user={{ username: 'op1', role: 'USER' }} />)
     expect(screen.getByText('op1')).toBeInTheDocument()
     expect(screen.queryByText('Users')).not.toBeInTheDocument()
     expect(screen.queryByText('Analytics')).not.toBeInTheDocument()
     expect(screen.queryByText('Requisitions')).not.toBeInTheDocument()
-    expect(screen.queryByText('HMR Register')).not.toBeInTheDocument()
-    expect(screen.queryByText('Maintenance')).not.toBeInTheDocument()
-    expect(screen.queryByText('Field HMR')).not.toBeInTheDocument()
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('HMR Register')).toBeInTheDocument()
+    expect(screen.getByText('Maintenance')).toBeInTheDocument()
     expect(screen.getByText('Spares')).toBeInTheDocument()
+    expect(screen.getByText('Field HMR')).toBeInTheDocument()
 
     // Toggle mobile drawer
     const menuBtn = screen.getByRole('button', { name: /Menu/i })

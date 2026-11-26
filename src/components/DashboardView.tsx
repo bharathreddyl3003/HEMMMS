@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AddMachineModal from '@/components/AddMachineModal'
+import FleetModuleSwitcher from '@/components/FleetModuleSwitcher'
 import HmrRegisterView from '@/components/HmrRegisterView'
 import MaintenanceStatusView from '@/components/MaintenanceStatusView'
 import MobileHmrView from '@/components/MobileHmrView'
@@ -105,6 +106,10 @@ export default function DashboardView({
     () => maintenanceStatuses.filter(m => m.minHoursLeft <= 0).length,
     [maintenanceStatuses]
   )
+  const dueSoonMaintenanceCount = useMemo(
+    () => maintenanceStatuses.filter(m => m.minHoursLeft > 0 && m.minHoursLeft <= 50).length,
+    [maintenanceStatuses]
+  )
 
   const syncUrlParams = (updates: Record<string, string>) => {
     if (typeof window !== 'undefined') {
@@ -189,25 +194,64 @@ export default function DashboardView({
         )}
       </div>
 
-      {/* Dashboard Section Tabs */}
-      <div style={{ marginBottom: '1.35rem' }}>
+      {/* Elevated Dashboard Command Tabs */}
+      <div style={{ marginBottom: '1.5rem' }}>
         <div
           role="tablist"
           aria-label="Dashboard Sections"
           style={{
-            display: 'inline-flex',
-            flexWrap: 'wrap',
-            gap: '0.4rem',
-            padding: '0.35rem',
-            borderRadius: '14px',
-            background: 'rgba(6, 10, 20, 0.72)',
-            border: '1px solid var(--border-strong)',
-            maxWidth: '100%'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 235px), 1fr))',
+            gap: '0.85rem',
           }}
         >
           {DASHBOARD_TABS.map((tab) => {
             const isActive = activeTab === tab.key
-            const isFieldHighlight = tab.key === 'field' && !isActive
+
+            const accentColor =
+              tab.key === 'maintenance'
+                ? overdueMaintenanceCount > 0
+                  ? '#f43f5e'
+                  : dueSoonMaintenanceCount > 0
+                  ? '#f59e0b'
+                  : '#10b981'
+                : tab.key === 'hmr'
+                ? '#2dd4bf'
+                : '#38bdf8'
+
+            const subtitle =
+              tab.key === 'fleet'
+                ? 'Unit Cards & Subassembly Health'
+                : tab.key === 'hmr'
+                ? 'Daily Auto-Save Log & History'
+                : tab.key === 'maintenance'
+                ? 'Preventive Urgency Matrix'
+                : 'Rapid Mobile Touch Entry'
+
+            const pillText =
+              tab.key === 'fleet'
+                ? `${effectiveMachines.length} Units`
+                : tab.key === 'hmr'
+                ? 'Daily Sheet'
+                : tab.key === 'maintenance'
+                ? overdueMaintenanceCount > 0
+                  ? `${overdueMaintenanceCount} Overdue`
+                  : dueSoonMaintenanceCount > 0
+                  ? `${dueSoonMaintenanceCount} Due Soon`
+                  : 'All Clear'
+                : 'Quick Entry'
+
+            const pillColors =
+              tab.key === 'maintenance' && overdueMaintenanceCount > 0
+                ? { bg: 'rgba(244, 63, 94, 0.18)', text: '#fb7185', border: 'rgba(244, 63, 94, 0.42)' }
+                : tab.key === 'maintenance' && dueSoonMaintenanceCount > 0
+                ? { bg: 'rgba(245, 158, 11, 0.18)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.42)' }
+                : tab.key === 'maintenance'
+                ? { bg: 'rgba(16, 185, 129, 0.16)', text: '#34d399', border: 'rgba(16, 185, 129, 0.35)' }
+                : isActive
+                ? { bg: 'rgba(56, 189, 248, 0.2)', text: '#e0f2fe', border: 'rgba(56, 189, 248, 0.45)' }
+                : { bg: 'rgba(255, 255, 255, 0.06)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.18)' }
+
             return (
               <button
                 key={tab.key}
@@ -216,35 +260,91 @@ export default function DashboardView({
                 aria-selected={isActive}
                 onClick={() => handleDashboardTabSwitch(tab.key)}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.55rem 1.05rem',
-                  borderRadius: '10px',
-                  fontSize: '0.9rem',
-                  fontWeight: isActive ? 700 : 500,
-                  background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-                  color: isActive ? '#f8fafc' : isFieldHighlight ? '#38bdf8' : 'var(--text-secondary)',
-                  border: isActive ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '0.65rem',
+                  textAlign: 'left',
+                  padding: '0.95rem 1.05rem',
+                  borderRadius: '14px',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  overflow: 'hidden',
+                  background: isActive
+                    ? `linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(14, 165, 233, 0.14))`
+                    : 'rgba(15, 23, 42, 0.58)',
+                  border: isActive
+                    ? `1.5px solid ${accentColor}`
+                    : '1px solid rgba(148, 163, 184, 0.18)',
+                  boxShadow: isActive
+                    ? `0 12px 28px -12px ${accentColor}88, inset 0 1px 0 rgba(255,255,255,0.12)`
+                    : '0 6px 18px -10px rgba(0, 0, 0, 0.55)',
+                  transition: 'all 0.18s ease',
                 }}
               >
-                <NavIcon name={tab.icon} />
-                <span>{tab.label}</span>
-                {tab.key === 'maintenance' && overdueMaintenanceCount > 0 && (
-                  <span className="tabular-nums" style={{
-                    background: 'rgba(244, 63, 94, 0.2)',
-                    color: '#fb7185',
-                    border: '1px solid rgba(244, 63, 94, 0.4)',
-                    borderRadius: '999px',
-                    padding: '0.06rem 0.45rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 700
-                  }}>
-                    {overdueMaintenanceCount}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: isActive ? '3px' : '2px',
+                    background: isActive ? accentColor : 'rgba(148, 163, 184, 0.12)',
+                  }}
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.5rem' }}>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '10px',
+                      background: isActive ? `${accentColor}26` : 'rgba(255, 255, 255, 0.05)',
+                      border: `1px solid ${isActive ? `${accentColor}66` : 'rgba(148, 163, 184, 0.16)'}`,
+                      color: isActive ? accentColor : '#cbd5e1',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <NavIcon name={tab.icon} />
+                  </div>
+
+                  <span
+                    className="tabular-nums"
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '0.18rem 0.55rem',
+                      borderRadius: '999px',
+                      background: pillColors.bg,
+                      color: pillColors.text,
+                      border: `1px solid ${pillColors.border}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {pillText}
                   </span>
-                )}
+                </div>
+
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '1.02rem',
+                    fontWeight: 700,
+                    color: isActive ? '#f8fafc' : '#e2e8f0',
+                    marginBottom: '0.18rem',
+                  }}>
+                    <span>{tab.label}</span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: isActive ? '#cbd5e1' : 'var(--text-secondary)' }}>
+                    {subtitle}
+                  </div>
+                </div>
               </button>
             )
           })}
@@ -256,83 +356,13 @@ export default function DashboardView({
           {/* Segmented Module Switcher + Search/Filter Toolbar */}
           <div className="glass-panel mb-6" style={{ padding: '0.9rem 1.1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              {/* Module Switcher Pills */}
-              <div style={{
-                display: 'inline-flex',
-                gap: '0.4rem',
-                padding: '0.3rem',
-                borderRadius: '12px',
-                background: 'rgba(6, 10, 20, 0.65)',
-                border: '1px solid var(--border)'
-              }} role="tablist" aria-label="Fleet Category">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeModule === 'shovels'}
-                  onClick={() => handleModuleSwitch('shovels')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.55rem',
-                    padding: '0.55rem 1.15rem',
-                    borderRadius: '9px',
-                    fontSize: '0.92rem',
-                    fontWeight: activeModule === 'shovels' ? 700 : 500,
-                    background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
-                    color: activeModule === 'shovels' ? '#f8fafc' : 'var(--text-secondary)',
-                    border: activeModule === 'shovels' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <span>🚜</span>
-                  <span>Shovels Module</span>
-                  <span className="tabular-nums" style={{
-                    background: activeModule === 'shovels' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-                    color: activeModule === 'shovels' ? '#060a14' : '#cbd5e1',
-                    borderRadius: '999px',
-                    padding: '0.1rem 0.5rem',
-                    fontSize: '0.74rem',
-                    fontWeight: 700
-                  }}>
-                    {shovels.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeModule === 'drills'}
-                  onClick={() => handleModuleSwitch('drills')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.55rem',
-                    padding: '0.55rem 1.15rem',
-                    borderRadius: '9px',
-                    fontSize: '0.92rem',
-                    fontWeight: activeModule === 'drills' ? 700 : 500,
-                    background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
-                    color: activeModule === 'drills' ? '#f8fafc' : 'var(--text-secondary)',
-                    border: activeModule === 'drills' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <span>🛠️</span>
-                  <span>Drills Module</span>
-                  <span className="tabular-nums" style={{
-                    background: activeModule === 'drills' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-                    color: activeModule === 'drills' ? '#060a14' : '#cbd5e1',
-                    borderRadius: '999px',
-                    padding: '0.1rem 0.5rem',
-                    fontSize: '0.74rem',
-                    fontWeight: 700
-                  }}>
-                    {drills.length}
-                  </span>
-                </button>
-              </div>
+              <FleetModuleSwitcher
+                value={activeModule}
+                shovelsCount={shovels.length}
+                drillsCount={drills.length}
+                onChange={handleModuleSwitch}
+                ariaLabel="Fleet Category"
+              />
 
               {/* Search & Status Filter */}
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>

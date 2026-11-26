@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import Link from 'next/link'
+import FleetModuleSwitcher from './FleetModuleSwitcher'
 import { MachineWithSchedule } from './HmrRegisterTable'
 
 interface MobileHmrViewProps {
@@ -125,54 +126,14 @@ export default function MobileHmrView({
       )}
 
       {/* Module Switcher Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('shovels')}
-          style={{
-            flex: 1,
-            padding: '0.65rem 1rem',
-            borderRadius: '12px',
-            fontSize: '0.95rem',
-            fontWeight: activeModule === 'shovels' ? 700 : 500,
-            cursor: 'pointer',
-            border: activeModule === 'shovels' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-            background: activeModule === 'shovels' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'shovels' ? '#38bdf8' : 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <span>🚜</span>
-          <span>Shovels ({shovels.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabSwitch('drills')}
-          style={{
-            flex: 1,
-            padding: '0.65rem 1rem',
-            borderRadius: '12px',
-            fontSize: '0.95rem',
-            fontWeight: activeModule === 'drills' ? 700 : 500,
-            cursor: 'pointer',
-            border: activeModule === 'drills' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-            background: activeModule === 'drills' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            color: activeModule === 'drills' ? '#38bdf8' : 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <span>🛠️</span>
-          <span>Drills ({drills.length})</span>
-        </button>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <FleetModuleSwitcher
+          value={activeModule}
+          shovelsCount={shovels.length}
+          drillsCount={drills.length}
+          onChange={handleTabSwitch}
+          ariaLabel="Field HMR Fleet Category"
+        />
       </div>
 
       {/* Quick Search Input */}

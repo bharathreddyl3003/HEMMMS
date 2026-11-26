@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import FleetModuleSwitcher from './FleetModuleSwitcher'
 import type { ProcessedMachineStatus } from '@/lib/maintenance-status'
 
 export type { ProcessedMachineStatus }
@@ -89,62 +90,15 @@ export default function MaintenanceStatusView({
 
       {/* Segmented Module Filter Tabs (0ms) */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <div
-          role="tablist"
-          aria-label="Filter Maintenance by Fleet Category"
-          style={{
-            display: 'inline-flex',
-            gap: '0.4rem',
-            padding: '0.3rem',
-            borderRadius: '12px',
-            background: 'rgba(6, 10, 20, 0.65)',
-            border: '1px solid var(--border)',
-            flexWrap: 'wrap'
-          }}
-        >
-          {[
-            { key: 'all' as const, label: `All Fleet`, count: totalMachinesCount },
-            { key: 'shovels' as const, label: `🚜 Shovels`, count: shovelsCount },
-            { key: 'drills' as const, label: `🛠️ Drills`, count: drillsCount }
-          ].map(tab => {
-            const active = activeFilter === tab.key
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => handleFilterChange(tab.key)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1.05rem',
-                  borderRadius: '9px',
-                  fontSize: '0.9rem',
-                  fontWeight: active ? 700 : 500,
-                  background: active ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
-                  color: active ? '#f8fafc' : 'var(--text-secondary)',
-                  border: active ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>{tab.label}</span>
-                <span className="tabular-nums" style={{
-                  background: active ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-                  color: active ? '#060a14' : '#cbd5e1',
-                  borderRadius: '999px',
-                  padding: '0.08rem 0.45rem',
-                  fontSize: '0.73rem',
-                  fontWeight: 700
-                }}>
-                  {tab.count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        <FleetModuleSwitcher
+          includeAll
+          value={activeFilter}
+          totalCount={totalMachinesCount}
+          shovelsCount={shovelsCount}
+          drillsCount={drillsCount}
+          onChange={handleFilterChange}
+          ariaLabel="Filter Maintenance by Fleet Category"
+        />
       </div>
 
       {/* Summary KPI Cards */}
