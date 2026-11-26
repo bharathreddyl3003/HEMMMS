@@ -9,21 +9,28 @@ interface MobileHmrViewProps {
   drills: MachineWithSchedule[]
   activeModule: 'shovels' | 'drills'
   canEdit: boolean
+  embedded?: boolean
+  onModuleChange?: (mod: 'shovels' | 'drills') => void
+  onHmrUpdated?: (machineId: string, runningHours: number) => void
 }
 
 export default function MobileHmrView({
   shovels,
   drills,
   activeModule: initialModule,
-  canEdit
+  canEdit,
+  embedded = false,
+  onModuleChange,
+  onHmrUpdated
 }: MobileHmrViewProps) {
-  const [activeModule, setActiveModule] = useState<'shovels' | 'drills'>(initialModule)
+  const [internalModule, setInternalModule] = useState<'shovels' | 'drills'>(initialModule)
   const [searchQuery, setSearchQuery] = useState('')
   const [localHmr, setLocalHmr] = useState<{ [machineId: string]: number }>({})
   const [saveStatus, setSaveStatus] = useState<{ [machineId: string]: 'idle' | 'saving' | 'saved' | 'error' }>({})
 
   const debounceTimers = useRef<{ [machineId: string]: NodeJS.Timeout }>({})
 
+  const activeModule = onModuleChange ? initialModule : internalModule
   const machines = activeModule === 'shovels' ? shovels : drills
 
   const handleHmrChange = (machineId: string, val: string) => {
@@ -46,6 +53,7 @@ export default function MobileHmrView({
         })
 
         if (res.ok) {
+          onHmrUpdated?.(machineId, num)
           setSaveStatus(prev => ({ ...prev, [machineId]: 'saved' }))
           setTimeout(() => {
             setSaveStatus(prev => ({ ...prev, [machineId]: 'idle' }))
@@ -61,7 +69,8 @@ export default function MobileHmrView({
   }
 
   const handleTabSwitch = (mod: 'shovels' | 'drills') => {
-    setActiveModule(mod)
+    setInternalModule(mod)
+    onModuleChange?.(mod)
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       url.searchParams.set('module', mod)
@@ -77,42 +86,43 @@ export default function MobileHmrView({
   })
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '1.25rem 1rem 3rem 1rem' }}>
-      {/* Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div>
-          <div style={{ 
-            fontSize: '0.72rem', 
-            fontWeight: 700, 
-            letterSpacing: '0.12em', 
-            color: '#38bdf8', 
-            textTransform: 'uppercase',
-            marginBottom: '0.2rem'
-          }}>
-            FIELD TOOLS
+    <div style={embedded ? undefined : { maxWidth: '960px', margin: '0 auto', padding: '1.25rem 1rem 3rem 1rem' }}>
+      {!embedded && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div>
+            <div style={{ 
+              fontSize: '0.72rem', 
+              fontWeight: 700, 
+              letterSpacing: '0.12em', 
+              color: '#38bdf8', 
+              textTransform: 'uppercase',
+              marginBottom: '0.2rem'
+            }}>
+              FIELD TOOLS
+            </div>
+            <h1 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#f8fafc' }}>
+              Daily HMR Entry
+            </h1>
+            <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Tap any machine to update hours. Changes save instantly to the fleet register.
+            </p>
           </div>
-          <h1 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#f8fafc' }}>
-            Daily HMR Entry
-          </h1>
-          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            Tap any machine to update hours. Changes save instantly to the fleet register.
-          </p>
-        </div>
 
-        <Link
-          href="/hmr-register"
-          className="btn"
-          style={{ 
-            padding: '0.5rem 1rem', 
-            fontSize: '0.85rem', 
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            fontWeight: 500
-          }}
-        >
-          Full register ↗
-        </Link>
-      </div>
+          <Link
+            href="/hmr-register"
+            className="btn"
+            style={{ 
+              padding: '0.5rem 1rem', 
+              fontSize: '0.85rem', 
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              fontWeight: 500
+            }}
+          >
+            Full register ↗
+          </Link>
+        </div>
+      )}
 
       {/* Module Switcher Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>

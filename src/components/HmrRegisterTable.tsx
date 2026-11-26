@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import Modal from './Modal'
 import SparePartUsageSelector, { SparePartOption, SelectedSpareUsage } from './SparePartUsageSelector'
@@ -31,6 +31,7 @@ interface HmrRegisterTableProps {
   canEdit: boolean
   spareParts?: SparePartOption[]
   onCompletionAdded?: () => void
+  onHmrUpdated?: (machineId: string, runningHours: number) => void
 }
 
 const COMMON_FITTERS = [
@@ -45,7 +46,8 @@ export default function HmrRegisterTable({
   activeModule,
   canEdit,
   spareParts = [],
-  onCompletionAdded
+  onCompletionAdded,
+  onHmrUpdated
 }: HmrRegisterTableProps) {
   // Local state for machine HMRs to allow instant typing & recalculation
   const [localHmr, setLocalHmr] = useState<{ [machineId: string]: number }>({})
@@ -69,15 +71,6 @@ export default function HmrRegisterTable({
 
   // Debounce timers map
   const debounceTimers = useRef<{ [machineId: string]: NodeJS.Timeout }>({})
-
-  // Initialize local HMR state from props
-  useEffect(() => {
-    const initialHmrMap: { [id: string]: number } = {}
-    machines.forEach(m => {
-      initialHmrMap[m.id] = m.runningHours
-    })
-    setLocalHmr(initialHmrMap)
-  }, [machines])
 
   // Helper to extract primary scheduled maintenance (Engine)
   const getPrimarySchedule = (m: MachineWithSchedule) => {
@@ -107,6 +100,7 @@ export default function HmrRegisterTable({
         })
 
         if (res.ok) {
+          onHmrUpdated?.(machineId, num)
           setSaveStatus(prev => ({ ...prev, [machineId]: 'saved' }))
           setTimeout(() => {
             setSaveStatus(prev => ({ ...prev, [machineId]: 'idle' }))

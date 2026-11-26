@@ -28,7 +28,7 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     vi.useRealTimers()
   })
 
-  it('DashboardView switches Shovels/Drills tabs instantaneously and filters by search & status', () => {
+  it('DashboardView switches Fleet/HMR Register/Maintenance/Field HMR tabs and syncs module & HMR updates', async () => {
     const machines = [
       {
         id: '1',
@@ -41,6 +41,9 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
         status: 'Working',
         runningHours: 33205,
         subassemblies: [{ id: 's1', name: 'Engine', currentHours: 1000, lifeExpectancyHours: 10000, healthStatus: 'Good' }],
+        scheduledMaintenances: [
+          { id: 'sch-1', type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: 33100, lastMaintenanceDate: '2026-11-01' },
+        ],
       },
       {
         id: '2',
@@ -53,6 +56,9 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
         status: 'Breakdown',
         runningHours: 19260,
         subassemblies: [{ id: 's2', name: 'Hydraulic Pump', currentHours: 5800, lifeExpectancyHours: 6000, healthStatus: 'Critical' }],
+        scheduledMaintenances: [
+          { id: 'sch-2', type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: 19000, lastMaintenanceDate: '2026-11-01' },
+        ],
       },
       {
         id: '3',
@@ -65,18 +71,29 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
         status: 'Working',
         runningHours: 29595,
         subassemblies: [{ id: 's3', name: 'Compressor', currentHours: 500, lifeExpectancyHours: 8000, healthStatus: 'Good' }],
+        scheduledMaintenances: [
+          { id: 'sch-3', type: 'Engine', intervalHrs: 250, lastMaintenanceHmr: 29450, lastMaintenanceDate: '2026-11-01' },
+        ],
       },
     ]
 
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true }) })
+    vi.stubGlobal('fetch', fetchMock)
+
     render(<DashboardView allMachines={machines} initialModule="shovels" canEdit={true} />)
+
+    // Dashboard embeds Fleet, HMR Register, Maintenance, and Field HMR tabs cleanly
+    expect(screen.getByRole('tab', { name: /Equipment Fleet/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /HMR Register/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Maintenance/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Field HMR/i })).toBeInTheDocument()
 
     // Fleet telemetry summary tiles & removed header actions do not render on Dashboard
     expect(screen.queryByText('Shovels Fleet')).not.toBeInTheDocument()
     expect(screen.queryByText('Mechanical Availability')).not.toBeInTheDocument()
     expect(screen.queryByText('Cumulative Operating HMR')).not.toBeInTheDocument()
     expect(screen.queryByText('Units Requiring Attention')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /HMR Register/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /Field HMR/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Schedule Maintenance/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /\+ Add Shovel/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /\+ Add Drill/i })).not.toBeInTheDocument()
@@ -92,12 +109,38 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
 
     // Switch to Drills Module
     fireEvent.click(screen.getByRole('tab', { name: /Drills Module/i }))
-    expect(screen.queryByText('Drills Fleet')).not.toBeInTheDocument()
-    expect(screen.queryByText('Mechanical Availability')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /\+ Add Drill/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /\+ Add Equipment/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
     expect(screen.getByText('DM11')).toBeInTheDocument()
+
+    // Switch to Maintenance tab in-place
+    fireEvent.click(screen.getByRole('tab', { name: /Maintenance/i }))
+    expect(screen.getByText('Filtered Fleet Units')).toBeInTheDocument()
+    expect(screen.getByText('10.0h Overdue')).toBeInTheDocument()
+
+    // Switch to HMR Register tab in-place (carries Drills module)
+    fireEvent.click(screen.getByRole('tab', { name: /HMR Register/i }))
+    expect(screen.getByText('DM11')).toBeInTheDocument()
+    expect(screen.queryByText('Fleet Overview & HMR Register')).not.toBeInTheDocument()
+
+    // Switch to Field HMR tab, update DM11 HMR, and verify it propagates back to Equipment Fleet
+    fireEvent.click(screen.getByRole('tab', { name: /Field HMR/i }))
+    expect(screen.queryByText('Daily HMR Entry')).not.toBeInTheDocument()
+    const fieldInput = screen.getByLabelText('Current HMR')
+    fireEvent.change(fieldInput, { target: { value: '29610' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(650)
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/machines/3/hmr',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ runningHours: 29610 }),
+      })
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: /Equipment Fleet/i }))
+    expect(screen.getByText('29,610.0 hrs')).toBeInTheDocument()
   })
 
   it('MaintenanceStatusView displays N/A (Shovel) for compressor column and filters tabs in memory', () => {
@@ -187,17 +230,17 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     expect(screen.getByText('✓ Auto-saved')).toBeInTheDocument()
   })
 
-  it('TopNav renders role badge, omits Analytics/Requisitions tabs, shows Users only for ADMIN, and toggles mobile menu drawer', () => {
+  it('TopNav renders Dashboard and Spares only for USER, adds Users for ADMIN, omits Dashboard sub-tabs and removed tabs, and toggles mobile menu drawer', () => {
     const { rerender } = render(<TopNav user={{ username: 'op1', role: 'USER' }} />)
     expect(screen.getByText('op1')).toBeInTheDocument()
     expect(screen.queryByText('Users')).not.toBeInTheDocument()
     expect(screen.queryByText('Analytics')).not.toBeInTheDocument()
     expect(screen.queryByText('Requisitions')).not.toBeInTheDocument()
+    expect(screen.queryByText('HMR Register')).not.toBeInTheDocument()
+    expect(screen.queryByText('Maintenance')).not.toBeInTheDocument()
+    expect(screen.queryByText('Field HMR')).not.toBeInTheDocument()
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('HMR Register')).toBeInTheDocument()
-    expect(screen.getByText('Maintenance')).toBeInTheDocument()
     expect(screen.getByText('Spares')).toBeInTheDocument()
-    expect(screen.getByText('Field HMR')).toBeInTheDocument()
 
     // Toggle mobile drawer
     const menuBtn = screen.getByRole('button', { name: /Menu/i })

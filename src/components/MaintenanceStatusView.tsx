@@ -2,36 +2,22 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import type { ProcessedMachineStatus } from '@/lib/maintenance-status'
 
-export interface ProcessedMachineStatus {
-  id: string
-  name: string
-  model: string
-  category: string
-  make?: string | null
-  capacity?: string | null
-  serialNumber?: string | null
-  runningHours: number
-  isShovel: boolean
-  engineLeft: number | null
-  compressorLeft: number | null
-  hydraulicLeft: number | null
-  engineStatus: string
-  compressorStatus: string
-  hydraulicStatus: string
-  minHoursLeft: number
-}
+export type { ProcessedMachineStatus }
 
 interface MaintenanceStatusViewProps {
   initialMachines: ProcessedMachineStatus[]
   totalMachinesCount: number
   initialFilter?: 'all' | 'shovels' | 'drills'
+  embedded?: boolean
 }
 
 export default function MaintenanceStatusView({
   initialMachines,
   totalMachinesCount,
-  initialFilter = 'all'
+  initialFilter = 'all',
+  embedded = false
 }: MaintenanceStatusViewProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'shovels' | 'drills'>(initialFilter)
 
@@ -56,46 +42,50 @@ export default function MaintenanceStatusView({
   const shovelsCount = initialMachines.filter(m => m.category === 'Shovel').length
   const drillsCount = initialMachines.filter(m => m.category === 'Drill' || !m.category).length
 
-  return (
-    <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.75rem 1.5rem 3rem' }}>
-      <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: '#38bdf8',
-            marginBottom: '0.3rem'
-          }}>
-            Preventive Interval Matrix
-          </div>
-          <h1 style={{ margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Fleet Maintenance Status
-          </h1>
-          <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Real-time scheduled service tracking sorted by highest urgency first
-          </p>
-        </div>
+  const Container = embedded ? 'div' : 'main'
 
-        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/hmr-register"
-            className="btn"
-            style={{
-              background: 'rgba(56, 189, 248, 0.14)',
+  return (
+    <Container style={embedded ? undefined : { maxWidth: '1400px', margin: '0 auto', padding: '1.75rem 1.5rem 3rem' }}>
+      {!embedded && (
+        <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
               color: '#38bdf8',
-              borderColor: 'rgba(56, 189, 248, 0.35)',
-              fontWeight: 600
-            }}
-          >
-            📋 HMR Register
-          </Link>
-          <Link href="/" className="btn btn-secondary">
-            &larr; Dashboard
-          </Link>
+              marginBottom: '0.3rem'
+            }}>
+              Preventive Interval Matrix
+            </div>
+            <h1 style={{ margin: 0, background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Fleet Maintenance Status
+            </h1>
+            <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Real-time scheduled service tracking sorted by highest urgency first
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link
+              href="/hmr-register"
+              className="btn"
+              style={{
+                background: 'rgba(56, 189, 248, 0.14)',
+                color: '#38bdf8',
+                borderColor: 'rgba(56, 189, 248, 0.35)',
+                fontWeight: 600
+              }}
+            >
+              📋 HMR Register
+            </Link>
+            <Link href="/" className="btn btn-secondary">
+              &larr; Dashboard
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Segmented Module Filter Tabs (0ms) */}
       <div style={{ marginBottom: '1.5rem' }}>
@@ -274,7 +264,7 @@ export default function MaintenanceStatusView({
           </table>
         </div>
       </div>
-    </main>
+    </Container>
   )
 }
 
