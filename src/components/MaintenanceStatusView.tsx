@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import FleetModuleSwitcher from './FleetModuleSwitcher'
+import EquipmentIcon from './EquipmentIcon'
 import type { ProcessedMachineStatus } from '@/lib/maintenance-status'
 
 export type { ProcessedMachineStatus }
@@ -154,9 +155,9 @@ export default function MaintenanceStatusView({
                   }}
                 >
                   <th scope="row" style={{ padding: '0.95rem 1rem', textAlign: 'left', fontWeight: 500 }}>
-                    <Link href={`/machines/${m.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                    <Link href={`/machines/${m.id}?from=maintenance`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <span aria-hidden="true">{m.isShovel ? '🚜' : '🛠️'}</span>
+                        <EquipmentIcon category={m.isShovel ? 'Shovel' : 'Drill'} size={17} />
                         <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#38bdf8' }}>{m.name}</span>
                         {m.capacity && (
                           <span style={{ fontSize: '0.72rem', padding: '0.12rem 0.45rem', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', fontWeight: 600 }}>
@@ -198,7 +199,7 @@ export default function MaintenanceStatusView({
                   </td>
                   <td style={{ padding: '0.95rem 1rem', textAlign: 'right' }}>
                     <Link
-                      href={`/machines/${m.id}?tab=scheduled`}
+                      href={`/machines/${m.id}?tab=scheduled&from=maintenance`}
                       className="btn btn-secondary"
                       style={{ fontSize: '0.8rem', padding: '0.38rem 0.85rem', minBlockSize: '32px' }}
                     >

@@ -17,6 +17,7 @@ import DashboardView from '@/components/DashboardView'
 import MaintenanceStatusView from '@/components/MaintenanceStatusView'
 import MobileHmrView from '@/components/MobileHmrView'
 import TopNav from '@/components/TopNav'
+import MobileBottomNav from '@/components/MobileBottomNav'
 import Modal from '@/components/Modal'
 
 describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
@@ -101,6 +102,24 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
 
     expect(screen.getByText('T2')).toBeInTheDocument()
     expect(screen.getByText('S2')).toBeInTheDocument()
+    // Scheduled Maintenance countdown chips render on Fleet cards
+    expect(screen.getByText('-10h')).toBeInTheDocument()
+    expect(screen.getByText('+145h')).toBeInTheDocument()
+
+    // Urgency sort places Breakdown S2 ahead of Working T2 even when A-Z would put S2 first/T2
+    const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)
+    expect(headings).toEqual(['S2', 'T2'])
+
+    // Sort by Highest HMR puts T2 (33205) ahead of S2 (19260)
+    fireEvent.click(screen.getByRole('button', { name: 'HMR' }))
+    const hmrOrder = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)
+    expect(hmrOrder).toEqual(['T2', 'S2'])
+
+    // Compact List toggle renders dense table and switches back cleanly
+    fireEvent.click(screen.getByRole('button', { name: 'List' }))
+    expect(screen.getByRole('region', { name: 'Compact Equipment List' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cards' }))
+    expect(screen.queryByRole('region', { name: 'Compact Equipment List' })).not.toBeInTheDocument()
 
     // Filter Attention only
     fireEvent.click(screen.getByRole('button', { name: 'Attention' }))
@@ -256,6 +275,19 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
 
     rerender(<TopNav user={{ username: 'admin', role: 'ADMIN' }} />)
     expect(screen.getAllByText('Users').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('MobileBottomNav renders quick navigation links only when signed in', () => {
+    const { rerender } = render(<MobileBottomNav user={null} />)
+    expect(screen.queryByRole('navigation', { name: 'Mobile Quick Navigation' })).not.toBeInTheDocument()
+
+    rerender(<MobileBottomNav user={{ username: 'op1', role: 'USER' }} />)
+    const bottomNav = screen.getByRole('navigation', { name: 'Mobile Quick Navigation' })
+    expect(bottomNav).toBeInTheDocument()
+    expect(bottomNav).toHaveTextContent('Fleet')
+    expect(bottomNav).toHaveTextContent('HMR')
+    expect(bottomNav).toHaveTextContent('Maint')
+    expect(bottomNav).toHaveTextContent('Field HMR')
   })
 
   it('Modal opens native <dialog> and closes on close button click', () => {

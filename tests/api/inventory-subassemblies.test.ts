@@ -5,7 +5,9 @@ const { mockPrisma, mockGetSession } = vi.hoisted(() => ({
   mockPrisma: {
     sparePart: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
     subassembly: {
       create: vi.fn(),
@@ -20,6 +22,7 @@ vi.mock('@/lib/prisma', () => ({ default: mockPrisma }))
 vi.mock('@/lib/auth', () => ({ getSession: mockGetSession }))
 
 import { GET as sparesGet, POST as sparesPost } from '@/app/api/spares/route'
+import { PATCH as sparePatch } from '@/app/api/spares/[id]/route'
 import { POST as subCreate } from '@/app/api/subassemblies/route'
 import { PATCH as subPatch, DELETE as subDelete } from '@/app/api/subassemblies/[id]/route'
 
@@ -74,6 +77,65 @@ describe('Inventory & Subassemblies API routes', () => {
         })
       )
       expect(dupRes.status).toBe(400)
+    })
+
+    it('PATCH /api/spares/[id] enforces permissions, validates stock bounds, and supports restock adjustment', async () => {
+      mockGetSession.mockResolvedValue({ role: 'USER', permissions: { canEditSpares: false } })
+      const forbiddenRes = await sparePatch(
+        new Request('http://localhost/api/spares/sp1', {
+          method: 'PATCH',
+          body: JSON.stringify({ adjustment: 5 }),
+        }),
+        { params: Promise.resolve({ id: 'sp1' }) }
+      )
+      expect(forbiddenRes.status).toBe(403)
+
+      mockGetSession.mockResolvedValue({ role: 'USER', permissions: { canEditSpares: true } })
+
+      // Missing body fields -> 400
+      const emptyRes = await sparePatch(
+        new Request('http://localhost/api/spares/sp1', {
+          method: 'PATCH',
+          body: JSON.stringify({}),
+        }),
+        { params: Promise.resolve({ id: 'sp1' }) }
+      )
+      expect(emptyRes.status).toBe(400)
+
+      // Missing spare -> 404
+      mockPrisma.sparePart.findUnique.mockResolvedValueOnce(null)
+      const missingRes = await sparePatch(
+        new Request('http://localhost/api/spares/missing', {
+          method: 'PATCH',
+          body: JSON.stringify({ adjustment: 5 }),
+        }),
+        { params: Promise.resolve({ id: 'missing' }) }
+      )
+      expect(missingRes.status).toBe(404)
+
+      // Adjustment below zero -> 400
+      mockPrisma.sparePart.findUnique.mockResolvedValueOnce({ id: 'sp1', stockQuantity: 2, reorderLevel: 3 })
+      const belowZeroRes = await sparePatch(
+        new Request('http://localhost/api/spares/sp1', {
+          method: 'PATCH',
+          body: JSON.stringify({ adjustment: -5 }),
+        }),
+        { params: Promise.resolve({ id: 'sp1' }) }
+      )
+      expect(belowZeroRes.status).toBe(400)
+
+      // Valid absolute stockQuantity + reorderLevel update
+      mockPrisma.sparePart.findUnique.mockResolvedValueOnce({ id: 'sp1', stockQuantity: 2, reorderLevel: 3 })
+      mockPrisma.sparePart.update.mockResolvedValueOnce({ id: 'sp1', stockQuantity: 12, reorderLevel: 4 })
+      const okRes = await sparePatch(
+        new Request('http://localhost/api/spares/sp1', {
+          method: 'PATCH',
+          body: JSON.stringify({ stockQuantity: 12, reorderLevel: 4 }),
+        }),
+        { params: Promise.resolve({ id: 'sp1' }) }
+      )
+      expect(okRes.status).toBe(200)
+      expect(await okRes.json()).toEqual({ id: 'sp1', stockQuantity: 12, reorderLevel: 4 })
     })
   })
 

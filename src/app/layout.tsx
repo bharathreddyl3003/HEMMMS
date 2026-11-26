@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Outfit, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { getSession } from "@/lib/auth";
 
 const sans = Plus_Jakarta_Sans({
@@ -45,6 +46,7 @@ export default async function RootLayout({
           <div id="main-content" tabIndex={-1} style={{ flex: 1, outline: 'none' }}>
             {children}
           </div>
+          <MobileBottomNav user={session ? { username: session.username, role: session.role } : null} />
         </div>
       </body>
     </html>

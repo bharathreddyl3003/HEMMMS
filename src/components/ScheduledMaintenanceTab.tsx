@@ -10,21 +10,24 @@ type Schedule = {
   id: string
   type: string
   intervalHrs: number
-  lastMaintenanceDate: string
+  lastMaintenanceDate: string | Date
   lastMaintenanceHmr: number
 }
 
 export default function ScheduledMaintenanceTab({ 
   machineId, 
   currentMachineHmr, 
-  canEdit 
+  canEdit,
+  initialSchedules
 }: { 
   machineId: string, 
   currentMachineHmr: number, 
-  canEdit: boolean 
+  canEdit: boolean,
+  initialSchedules?: Schedule[]
 }) {
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [loading, setLoading] = useState(true)
+  const shouldFetchLive = canEdit || initialSchedules === undefined
+  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules ?? [])
+  const [loading, setLoading] = useState(shouldFetchLive)
   const [error, setError] = useState<string | null>(null)
   
   // Modal state
@@ -35,6 +38,7 @@ export default function ScheduledMaintenanceTab({
   const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlert[]>([])
 
   useEffect(() => {
+    if (!shouldFetchLive) return
     fetch(`/api/machines/${machineId}/scheduled-maintenance`)
       .then(res => res.json())
       .then(data => {
@@ -49,7 +53,7 @@ export default function ScheduledMaintenanceTab({
         setError(err.message)
         setLoading(false)
       })
-  }, [machineId])
+  }, [machineId, shouldFetchLive])
 
   const handleCompleteService = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -89,8 +93,9 @@ export default function ScheduledMaintenanceTab({
         const data = await res.json()
         alert('Failed to update scheduled maintenance: ' + (data.error || res.statusText))
       }
-    } catch (err: any) {
-      alert('Error updating schedule: ' + err.message)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      alert('Error updating schedule: ' + msg)
     } finally {
       setSubmitting(false)
     }

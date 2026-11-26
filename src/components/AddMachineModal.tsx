@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Modal from './Modal'
+import EquipmentIcon from './EquipmentIcon'
 import { useRouter } from 'next/navigation'
 
 export default function AddMachineModal({
@@ -89,7 +90,8 @@ export default function AddMachineModal({
                 onClick={() => handleCategoryChange('Shovel')}
                 style={{ padding: '0.6rem' }}
               >
-                🚜 Shovel
+                <EquipmentIcon category="Shovel" size={16} />
+                <span>Shovel</span>
               </button>
               <button
                 type="button"
@@ -97,7 +99,8 @@ export default function AddMachineModal({
                 onClick={() => handleCategoryChange('Drill')}
                 style={{ padding: '0.6rem' }}
               >
-                🛠️ Drill
+                <EquipmentIcon category="Drill" size={16} />
+                <span>Drill</span>
               </button>
             </div>
           </div>

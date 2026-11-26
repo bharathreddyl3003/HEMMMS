@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import EquipmentIcon from './EquipmentIcon'
 
 export type FleetModuleFilter = 'all' | 'shovels' | 'drills'
 
@@ -35,12 +36,12 @@ export default function FleetModuleSwitcher(props: FleetModuleSwitcherProps) {
     ariaLabel = 'Fleet Category',
   } = props
 
-  const tabs: Array<{ key: FleetModuleFilter; icon?: string; label: string; count: number }> = [
+  const tabs: Array<{ key: FleetModuleFilter; category?: 'Shovel' | 'Drill'; label: string; count: number }> = [
     ...(props.includeAll
       ? [{ key: 'all' as const, label: 'All Fleet', count: totalCount }]
       : []),
-    { key: 'shovels', icon: '🚜', label: 'Shovels Module', count: shovelsCount },
-    { key: 'drills', icon: '🛠️', label: 'Drills Module', count: drillsCount },
+    { key: 'shovels', category: 'Shovel', label: 'Shovels Module', count: shovelsCount },
+    { key: 'drills', category: 'Drill', label: 'Drills Module', count: drillsCount },
   ]
 
   const handleSelect = (key: FleetModuleFilter) => {
@@ -89,7 +90,7 @@ export default function FleetModuleSwitcher(props: FleetModuleSwitcherProps) {
               transition: 'all 0.15s ease',
             }}
           >
-            {tab.icon && <span aria-hidden="true">{tab.icon}</span>}
+            {tab.category && <EquipmentIcon category={tab.category} size={16} />}
             <span>{tab.label}</span>
             <span
               className="tabular-nums"

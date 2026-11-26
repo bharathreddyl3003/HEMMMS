@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import Modal from './Modal'
+import EquipmentIcon from './EquipmentIcon'
 import SparePartUsageSelector, { SparePartOption, SelectedSpareUsage } from './SparePartUsageSelector'
 import LowStockAlertModal from './LowStockAlertModal'
 import type { LowStockAlert } from '@/lib/spares'
@@ -342,8 +343,9 @@ export default function HmrRegisterTable({
         {/* Table Title & Formula Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.15rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.3rem', margin: '0 0 0.25rem 0', fontWeight: 700, color: '#f8fafc' }}>
-              {activeModule === 'shovels' ? '🚜 Shovels' : '🛠️ Drills'} HMR Register
+            <h2 style={{ fontSize: '1.3rem', margin: '0 0 0.25rem 0', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <EquipmentIcon category={activeModule === 'shovels' ? 'Shovel' : 'Drill'} size={20} />
+              <span>{activeModule === 'shovels' ? 'Shovels' : 'Drills'} HMR Register</span>
             </h2>
             <div style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
               {activeModule === 'shovels'
@@ -531,7 +533,7 @@ export default function HmrRegisterTable({
                       {/* Name / Link */}
                       <th scope="row" style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'left' }}>
                         <Link
-                          href={`/machines/${machine.id}`}
+                          href={`/machines/${machine.id}?from=hmr&module=${activeModule}`}
                           style={{
                             color: '#38bdf8',
                             fontWeight: 700,
