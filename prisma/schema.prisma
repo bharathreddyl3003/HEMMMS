@@ -20,6 +20,16 @@ model Machine {
   runningHours          Float                  @default(0)
   serialNumber          String?
   commissioningDate     DateTime?
+  assetCode             String?
+  manufactureYear       Int?
+  deploymentLocation    String?
+  supervisorName        String?
+  powerSource           String?
+  engineDetails         String?
+  operatingWeight       String?
+  fluidCapacities       String?
+  notes                 String?
+  customSpecs           Json?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 

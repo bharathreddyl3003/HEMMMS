@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { MachineDetailValidationError, parseExtendedMachineFields } from '@/lib/machine-details'
 
 export async function GET(
   request: Request,
@@ -19,7 +20,7 @@ export async function GET(
     })
     if (!machine) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json(machine)
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
   }
 }
@@ -58,28 +59,35 @@ export async function PATCH(
       }
     }
 
+    const extendedFields = parseExtendedMachineFields(data || {})
+
     const updated = await prisma.machine.update({
       where: { id: resolvedParams.id },
       data: {
-        name: data.name,
-        model: data.model,
+        name: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : data.name,
+        model: typeof data.model === 'string' && data.model.trim() ? data.model.trim() : data.model,
         category: data.category !== undefined ? data.category : undefined,
-        make: data.make !== undefined ? data.make : undefined,
-        capacity: data.capacity !== undefined ? data.capacity : undefined,
+        make: data.make !== undefined ? (data.make || null) : undefined,
+        capacity: data.capacity !== undefined ? (data.capacity || null) : undefined,
         type: data.type,
         status: data.status,
         runningHours,
         serialNumber: data.serialNumber !== undefined ? (data.serialNumber || null) : undefined,
         commissioningDate,
+        ...extendedFields,
       }
     })
     return NextResponse.json(updated)
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+  } catch (error: unknown) {
+    if (error instanceof MachineDetailValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    const prismaError = error as { code?: string; message?: string }
+    if (prismaError?.code === 'P2025') {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
     }
     console.error('PATCH Error:', error)
-    return NextResponse.json({ error: error.message || 'Failed to update' }, { status: 500 })
+    return NextResponse.json({ error: prismaError?.message || 'Failed to update' }, { status: 500 })
   }
 }
 
@@ -98,8 +106,9 @@ export async function DELETE(
       where: { id: resolvedParams.id }
     })
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+  } catch (error: unknown) {
+    const prismaError = error as { code?: string }
+    if (prismaError?.code === 'P2025') {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
     }
     return NextResponse.json({ error: 'Failed to delete machine' }, { status: 500 })

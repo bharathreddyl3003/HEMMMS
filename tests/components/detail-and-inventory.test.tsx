@@ -126,4 +126,76 @@ describe('MachineDetailView & InventoryView UI Integration', () => {
       expect(screen.getByRole('button', { name: /Low Stock Only \(0\)/i })).toBeInTheDocument()
     })
   })
+
+  it('EditMachineModal lets editors add structured & custom equipment details and renders them on MachineDetailView', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'm1' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <MachineDetailView
+        machine={{
+          id: 'm1',
+          name: 'B1',
+          model: 'BE1000-1',
+          category: 'Shovel',
+          make: 'BEML',
+          capacity: '6.5 Cu.M',
+          type: 'Hydraulic Shovel',
+          status: 'Working',
+          runningHours: 6756,
+          assetCode: 'RG2-SH-B1',
+          deploymentLocation: 'OB Bench 2',
+          powerSource: 'Diesel',
+          engineDetails: 'BEML Engine 650HP',
+          notes: 'Bucket teeth replaced',
+          customSpecs: [{ label: 'Auto-Lube', value: 'Lincoln' }],
+          subassemblies: [],
+          maintenanceLogs: [],
+        }}
+        canEdit={true}
+        canManageScheduledMaintenance={true}
+      />
+    )
+
+    // Populated extended specs render cleanly on Overview
+    expect(screen.getAllByText('OB Bench 2').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('BEML Engine 650HP')).toBeInTheDocument()
+    expect(screen.getByText('Lincoln')).toBeInTheDocument()
+    expect(screen.getByText('Bucket teeth replaced')).toBeInTheDocument()
+
+    // Open Edit Machine modal, add a new custom detail, verify inline partial validation, then save
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Machine' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ Add Custom Detail' }))
+
+    // Half-filled custom row blocks submit with clear error
+    fireEvent.change(screen.getByLabelText('Custom detail name 2'), { target: { value: 'Track Width' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+    expect(screen.getByText(/Each custom detail must include both a detail name and a value/i)).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    // Complete second custom row & update section supervisor, then submit
+    fireEvent.change(screen.getByLabelText('Custom detail value 2'), { target: { value: '800 mm' } })
+    fireEvent.change(screen.getByLabelText('Section In-charge / Engineer'), { target: { value: 'S. Rao' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/machines/m1',
+        expect.objectContaining({
+          method: 'PATCH',
+        })
+      )
+    })
+
+    const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(sentBody.assetCode).toBe('RG2-SH-B1')
+    expect(sentBody.supervisorName).toBe('S. Rao')
+    expect(sentBody.customSpecs).toEqual([
+      { label: 'Auto-Lube', value: 'Lincoln' },
+      { label: 'Track Width', value: '800 mm' },
+    ])
+  })
 })

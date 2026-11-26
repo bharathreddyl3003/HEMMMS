@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { MachineDetailValidationError, parseExtendedMachineFields } from '@/lib/machine-details'
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function GET() {
       }
     })
     return NextResponse.json(machines)
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch machines' }, { status: 500 })
   }
 }
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
       { type: 'Hydraulic', intervalHrs: 1000, lastMaintenanceHmr: initialHmr },
     ]
 
+    const extendedFields = parseExtendedMachineFields(data || {})
+
     const newMachine = await prisma.machine.create({
       data: {
         name: data.name.trim(),
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
         runningHours: initialHmr,
         serialNumber: data.serialNumber || null,
         commissioningDate,
+        ...extendedFields,
         subassemblies: {
           create: subassemblyData
         },
@@ -102,8 +106,12 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(newMachine)
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof MachineDetailValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    const err = error as { message?: string }
     console.error('POST Error:', error)
-    return NextResponse.json({ error: error.message || 'Failed to create machine' }, { status: 500 })
+    return NextResponse.json({ error: err?.message || 'Failed to create machine' }, { status: 500 })
   }
 }

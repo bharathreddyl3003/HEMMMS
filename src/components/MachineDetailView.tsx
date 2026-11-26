@@ -9,6 +9,7 @@ import AddSubassemblyModal from '@/components/AddSubassemblyModal'
 import ScheduledMaintenanceTab from '@/components/ScheduledMaintenanceTab'
 import DailyLogsList from '@/components/DailyLogsList'
 import EquipmentIcon from '@/components/EquipmentIcon'
+import { extractCustomSpecs } from '@/lib/machine-details'
 
 interface MachineSwitchOption {
   id: string
@@ -37,6 +38,16 @@ interface MachineDetailRecord {
   runningHours: number
   serialNumber?: string | null
   commissioningDate?: string | Date | null
+  assetCode?: string | null
+  manufactureYear?: number | null
+  deploymentLocation?: string | null
+  supervisorName?: string | null
+  powerSource?: string | null
+  engineDetails?: string | null
+  operatingWeight?: string | null
+  fluidCapacities?: string | null
+  notes?: string | null
+  customSpecs?: unknown
   subassemblies: SubassemblyItem[]
   maintenanceLogs: React.ComponentProps<typeof DailyLogsList>['initialLogs']
   scheduledMaintenances?: Array<{
@@ -103,6 +114,19 @@ export default function MachineDetailView({
   }
 
   const canEditScheduled = canEdit || canManageScheduledMaintenance
+  const customSpecs = extractCustomSpecs(machine.customSpecs)
+
+  const specRows: Array<{ label: string; value: string }> = [
+    ...(machine.assetCode ? [{ label: 'Asset Code', value: machine.assetCode }] : []),
+    ...(machine.manufactureYear ? [{ label: 'Manufacture Year', value: String(machine.manufactureYear) }] : []),
+    ...(machine.deploymentLocation ? [{ label: 'Deployment Bench / Location', value: machine.deploymentLocation }] : []),
+    ...(machine.supervisorName ? [{ label: 'Section In-charge', value: machine.supervisorName }] : []),
+    ...(machine.powerSource ? [{ label: 'Power Source / Drive', value: machine.powerSource }] : []),
+    ...(machine.engineDetails ? [{ label: 'Engine / Motor Rating', value: machine.engineDetails }] : []),
+    ...(machine.operatingWeight ? [{ label: 'Operating Weight', value: machine.operatingWeight }] : []),
+    ...(machine.fluidCapacities ? [{ label: 'Fuel & Hydraulic Capacities', value: machine.fluidCapacities }] : []),
+    ...customSpecs,
+  ]
 
   return (
     <main style={{ padding: '1.75rem 1.5rem 3rem', maxWidth: '1240px', marginInline: 'auto' }}>
@@ -161,6 +185,16 @@ export default function MachineDetailView({
               {machine.capacity && (
                 <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', fontSize: '0.85rem', padding: '0.3rem 0.7rem' }}>
                   {machine.capacity}
+                </span>
+              )}
+              {machine.assetCode && (
+                <span className="badge tabular-nums" style={{ background: 'rgba(45, 212, 191, 0.14)', color: '#2dd4bf', borderColor: 'rgba(45, 212, 191, 0.32)', fontSize: '0.8rem', padding: '0.28rem 0.65rem' }}>
+                  {machine.assetCode}
+                </span>
+              )}
+              {machine.deploymentLocation && (
+                <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.06)', color: '#cbd5e1', borderColor: 'rgba(148, 163, 184, 0.25)', fontSize: '0.8rem', padding: '0.28rem 0.65rem' }}>
+                  {machine.deploymentLocation}
                 </span>
               )}
             </div>
@@ -261,7 +295,63 @@ export default function MachineDetailView({
       </div>
 
       {currentTab === 'overview' && (
-        <div className="responsive-grid">
+        <>
+          {(specRows.length > 0 || machine.notes || canEdit) && (
+            <section className="glass-panel mb-5" aria-label="Equipment Specifications and Details">
+              <div className="flex-between mb-3" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Equipment Specifications &amp; Assignment</h2>
+                {specRows.length === 0 && !machine.notes && canEdit && (
+                  <span className="text-sm">Use Edit Machine above to add engine rating, site bench, weight, and custom specs.</span>
+                )}
+              </div>
+
+              {specRows.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                  gap: '0.75rem',
+                }}>
+                  {specRows.map((row) => (
+                    <div
+                      key={`${row.label}-${row.value}`}
+                      style={{
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '10px',
+                        background: 'rgba(6, 10, 20, 0.45)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.2rem' }}>
+                        {row.label}
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc', wordBreak: 'break-word' }}>
+                        {row.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {machine.notes && (
+                <div style={{
+                  marginTop: specRows.length > 0 ? '0.85rem' : 0,
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: '10px',
+                  background: 'rgba(56, 189, 248, 0.06)',
+                  border: '1px solid rgba(56, 189, 248, 0.2)',
+                }}>
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#38bdf8', fontWeight: 700, marginBottom: '0.25rem' }}>
+                    Technical Notes &amp; Remarks
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
+                    {machine.notes}
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
+
+          <div className="responsive-grid">
           <div>
             <div className="flex-between mb-4">
               <h2>Subassemblies Health</h2>
@@ -321,6 +411,7 @@ export default function MachineDetailView({
             />
           </div>
         </div>
+        </>
       )}
 
       {currentTab === 'scheduled' && (

@@ -157,6 +157,53 @@ describe('Machines & HMR API routes', () => {
       )
       expect(missingDelete.status).toBe(404)
     })
+
+    it('updates extended equipment details & customSpecs on PATCH and validates bounds', async () => {
+      mockGetSession.mockResolvedValue({ role: 'ADMIN' })
+
+      const badYearRes = await machinePatch(
+        new Request('http://localhost/api/machines/m1', {
+          method: 'PATCH',
+          body: JSON.stringify({ manufactureYear: 1900 }),
+        }),
+        { params: Promise.resolve({ id: 'm1' }) }
+      )
+      expect(badYearRes.status).toBe(400)
+
+      const badSpecRes = await machinePatch(
+        new Request('http://localhost/api/machines/m1', {
+          method: 'PATCH',
+          body: JSON.stringify({ customSpecs: [{ label: 'Mast Length', value: '' }] }),
+        }),
+        { params: Promise.resolve({ id: 'm1' }) }
+      )
+      expect(badSpecRes.status).toBe(400)
+
+      mockPrisma.machine.update.mockResolvedValueOnce({ id: 'm1', assetCode: 'RG2-SH-01' })
+      const okRes = await machinePatch(
+        new Request('http://localhost/api/machines/m1', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            assetCode: ' RG2-SH-01 ',
+            manufactureYear: 2021,
+            deploymentLocation: 'OB Bench 4',
+            supervisorName: 'A. Sharma',
+            powerSource: 'Diesel',
+            engineDetails: 'Cummins QSK23 • 760 HP',
+            operatingWeight: '118 Ton',
+            fluidCapacities: 'Fuel 1400L • Hyd 680L',
+            notes: 'Overhauled at 30k hrs',
+            customSpecs: [{ label: 'Track Pad Width', value: '800 mm' }],
+          }),
+        }),
+        { params: Promise.resolve({ id: 'm1' }) }
+      )
+      expect(okRes.status).toBe(200)
+      const updateData = mockPrisma.machine.update.mock.calls[0][0].data
+      expect(updateData.assetCode).toBe('RG2-SH-01')
+      expect(updateData.manufactureYear).toBe(2021)
+      expect(updateData.customSpecs).toEqual([{ label: 'Track Pad Width', value: '800 mm' }])
+    })
   })
 
   describe('PATCH /api/machines/[id]/hmr', () => {

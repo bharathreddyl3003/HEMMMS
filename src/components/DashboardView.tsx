@@ -28,6 +28,8 @@ interface MachineItem {
   type: string
   status: string
   runningHours: number
+  assetCode?: string | null
+  deploymentLocation?: string | null
   subassemblies: Array<{
     id: string
     name: string
@@ -161,7 +163,9 @@ export default function DashboardView({
         m.name.toLowerCase().includes(q) ||
         m.model.toLowerCase().includes(q) ||
         (m.make && m.make.toLowerCase().includes(q)) ||
-        (m.capacity && m.capacity.toLowerCase().includes(q))
+        (m.capacity && m.capacity.toLowerCase().includes(q)) ||
+        (m.assetCode && m.assetCode.toLowerCase().includes(q)) ||
+        (m.deploymentLocation && m.deploymentLocation.toLowerCase().includes(q))
       )
     })
 
@@ -708,11 +712,11 @@ export default function DashboardView({
                       </div>
 
                       {/* Card Footer */}
-                      <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                          {machine.type}
+                      <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {machine.deploymentLocation || machine.type}
                         </span>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', flexShrink: 0 }}>
                           Inspect &rarr;
                         </span>
                       </div>
