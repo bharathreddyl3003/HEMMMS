@@ -26,17 +26,21 @@ export async function deductSparePartsInTx(
   formattedPartsUsed: string | null
   lowStockAlerts: LowStockAlert[]
 }> {
-  const validParts = (deductedParts || []).filter(
-    p => p && p.sparePartId && Number.isInteger(p.quantity) && p.quantity > 0
-  )
-
+  const inputParts = deductedParts || []
   const summaryItems: string[] = []
   const lowStockAlerts: LowStockAlert[] = []
 
-  // Aggregate duplicate sparePartId entries if any
+  // Aggregate and strictly validate sparePartId + positive integer quantity
   const aggregated = new Map<string, number>()
-  for (const item of validParts) {
-    aggregated.set(item.sparePartId, (aggregated.get(item.sparePartId) || 0) + item.quantity)
+  for (const item of inputParts) {
+    if (!item || typeof item.sparePartId !== 'string' || !item.sparePartId.trim()) {
+      throw new Error('Invalid spare part selection: sparePartId is required')
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new Error(`Invalid spare part quantity (${item.quantity}): must be a positive integer`)
+    }
+    const id = item.sparePartId.trim()
+    aggregated.set(id, (aggregated.get(id) || 0) + item.quantity)
   }
 
   for (const [sparePartId, quantity] of aggregated.entries()) {

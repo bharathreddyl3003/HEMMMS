@@ -14,6 +14,13 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (
+      session.role !== 'ADMIN' &&
+      !session.permissions?.canEditMachines &&
+      !session.permissions?.canManageScheduledMaintenance
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const resolvedParams = await params
     const machineId = resolvedParams.id
@@ -39,17 +46,28 @@ export async function POST(
       deductedParts?: DeductedPartInput[]
     }
 
-    if (!fitterName || fitterName.trim() === '') {
+    if (typeof fitterName !== 'string' || fitterName.trim() === '') {
       return NextResponse.json({ error: 'Fitter name is required' }, { status: 400 })
     }
 
     const hmrValue = parseFloat(String(serviceHmr))
-    if (isNaN(hmrValue)) {
-      return NextResponse.json({ error: 'Valid service HMR is required' }, { status: 400 })
+    if (!Number.isFinite(hmrValue) || hmrValue < 0) {
+      return NextResponse.json({ error: 'Valid non-negative service HMR is required' }, { status: 400 })
     }
 
-    const intervalValue = parseInt(String(interval)) || 250
+    let intervalValue = 250
+    if (interval !== undefined && interval !== null && interval !== '') {
+      const parsedInterval = parseInt(String(interval), 10)
+      if (!Number.isFinite(parsedInterval) || parsedInterval <= 0) {
+        return NextResponse.json({ error: 'Interval must be a positive number of hours' }, { status: 400 })
+      }
+      intervalValue = parsedInterval
+    }
+
     const completionDate = date ? new Date(date) : new Date()
+    if (isNaN(completionDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid completion date' }, { status: 400 })
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Check machine exists
@@ -135,7 +153,11 @@ export async function POST(
     if (msg.startsWith('NOT_FOUND:')) {
       return NextResponse.json({ error: msg.replace('NOT_FOUND:', '') }, { status: 404 })
     }
-    if (msg.startsWith('Insufficient stock') || msg.startsWith('Spare part not found')) {
+    if (
+      msg.startsWith('Insufficient stock') ||
+      msg.startsWith('Spare part not found') ||
+      msg.startsWith('Invalid spare part')
+    ) {
       return NextResponse.json({ error: msg }, { status: 400 })
     }
     return NextResponse.json({ error: msg }, { status: 500 })

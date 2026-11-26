@@ -38,9 +38,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { username, password, ...permissions } = body
+    const {
+      username,
+      password,
+      canEditMachines,
+      canEditSpares,
+      canManageMaintenance,
+      canManagePRs,
+      canManageScheduledMaintenance
+    } = body || {}
 
-    const existingUser = await prisma.user.findUnique({ where: { username } })
+    if (typeof username !== 'string' || !username.trim() || typeof password !== 'string' || password.length < 4) {
+      return NextResponse.json({ error: 'Username and password (min 4 characters) are required' }, { status: 400 })
+    }
+
+    const trimmedUsername = username.trim()
+    const existingUser = await prisma.user.findUnique({ where: { username: trimmedUsername } })
     if (existingUser) {
       return NextResponse.json({ error: 'Username already exists' }, { status: 400 })
     }
@@ -49,11 +62,16 @@ export async function POST(request: Request) {
     
     const user = await prisma.user.create({
       data: {
-        username,
+        username: trimmedUsername,
         password: hashedPassword,
-        ...permissions
+        role: 'USER',
+        canEditMachines: Boolean(canEditMachines),
+        canEditSpares: Boolean(canEditSpares),
+        canManageMaintenance: Boolean(canManageMaintenance),
+        canManagePRs: Boolean(canManagePRs),
+        canManageScheduledMaintenance: Boolean(canManageScheduledMaintenance),
       },
-      select: { id: true, username: true } // Don't return password
+      select: { id: true, username: true }
     })
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

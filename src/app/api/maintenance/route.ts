@@ -4,6 +4,11 @@ import { getSession } from '@/lib/auth'
 
 export async function GET() {
   try {
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const logs = await prisma.maintenanceRecord.findMany({
       include: {
         machine: true
@@ -25,6 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const body = await request.json()
     const {
       machineId,
       description,
@@ -38,23 +44,49 @@ export async function POST(request: Request) {
       cost,
       subassemblyName,
       resetSchedule
-    } = await request.json()
+    } = body || {}
+
+    if (typeof machineId !== 'string' || !machineId.trim() || typeof description !== 'string' || !description.trim()) {
+      return NextResponse.json({ error: 'Machine ID and description are required' }, { status: 400 })
+    }
+
+    const parsedHmr = hmr !== null && hmr !== undefined && hmr !== '' ? parseFloat(hmr) : null
+    if (parsedHmr !== null && (!Number.isFinite(parsedHmr) || parsedHmr < 0)) {
+      return NextResponse.json({ error: 'Invalid HMR value' }, { status: 400 })
+    }
+
+    const parsedTime = timeSpentHrs !== null && timeSpentHrs !== undefined && timeSpentHrs !== '' ? parseFloat(timeSpentHrs) : null
+    if (parsedTime !== null && (!Number.isFinite(parsedTime) || parsedTime < 0)) {
+      return NextResponse.json({ error: 'Invalid labor hours value' }, { status: 400 })
+    }
+
+    const parsedCost = cost !== null && cost !== undefined && cost !== '' ? parseFloat(cost) : null
+    if (parsedCost !== null && (!Number.isFinite(parsedCost) || parsedCost < 0)) {
+      return NextResponse.json({ error: 'Invalid cost value' }, { status: 400 })
+    }
+
+    let parsedDueDate: Date | null = null
+    if (dueDate) {
+      const d = new Date(dueDate)
+      if (isNaN(d.getTime())) {
+        return NextResponse.json({ error: 'Invalid due date' }, { status: 400 })
+      }
+      parsedDueDate = d
+    }
 
     const result = await prisma.$transaction(async (tx) => {
-      const parsedHmr = hmr !== null && hmr !== undefined && hmr !== '' ? parseFloat(hmr) : null
-
       const log = await tx.maintenanceRecord.create({
         data: {
-          machineId,
-          description,
+          machineId: machineId.trim(),
+          description: description.trim(),
           logType: logType || 'Routine',
           hmr: parsedHmr,
-          dueDate: dueDate ? new Date(dueDate) : null,
+          dueDate: parsedDueDate,
           status: status || 'Completed',
           performedBy: performedBy || null,
           partsUsed: partsUsed || null,
-          timeSpentHrs: timeSpentHrs ? parseFloat(timeSpentHrs) : null,
-          cost: cost ? parseFloat(cost) : null,
+          timeSpentHrs: parsedTime,
+          cost: parsedCost,
           subassemblyName: subassemblyName || null
         },
         include: {
@@ -64,10 +96,10 @@ export async function POST(request: Request) {
 
       // If HMR is provided and higher than machine's current running hours, update machine
       if (parsedHmr !== null) {
-        const machine = await tx.machine.findUnique({ where: { id: machineId } })
+        const machine = await tx.machine.findUnique({ where: { id: machineId.trim() } })
         if (machine && parsedHmr > machine.runningHours) {
           await tx.machine.update({
-            where: { id: machineId },
+            where: { id: machineId.trim() },
             data: { runningHours: parsedHmr }
           })
         }
@@ -79,7 +111,7 @@ export async function POST(request: Request) {
         await tx.scheduledMaintenance.upsert({
           where: {
             machineId_type: {
-              machineId,
+              machineId: machineId.trim(),
               type: scheduleType
             }
           },
@@ -88,7 +120,7 @@ export async function POST(request: Request) {
             lastMaintenanceDate: new Date()
           },
           create: {
-            machineId,
+            machineId: machineId.trim(),
             type: scheduleType,
             intervalHrs: scheduleType === 'Engine' ? 250 : scheduleType === 'Compressor' ? 500 : 1000,
             lastMaintenanceHmr: parsedHmr,

@@ -4,6 +4,11 @@ import { getSession } from '@/lib/auth'
 
 export async function GET() {
   try {
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const machines = await prisma.machine.findMany({
       include: {
         subassemblies: true,
@@ -27,12 +32,27 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
-    if (!data.name || !data.model) {
+    if (typeof data?.name !== 'string' || !data.name.trim() || typeof data?.model !== 'string' || !data.model.trim()) {
       return NextResponse.json({ error: 'Name and model are required' }, { status: 400 })
     }
 
     const category = data.category === 'Shovel' ? 'Shovel' : 'Drill'
-    const initialHmr = parseFloat(data.runningHours || 0)
+    const initialHmr = data.runningHours !== undefined && data.runningHours !== null && data.runningHours !== ''
+      ? parseFloat(data.runningHours)
+      : 0
+
+    if (!Number.isFinite(initialHmr) || initialHmr < 0) {
+      return NextResponse.json({ error: 'Invalid running hours value' }, { status: 400 })
+    }
+
+    let commissioningDate: Date | null = null
+    if (data.commissioningDate) {
+      const parsed = new Date(data.commissioningDate)
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: 'Invalid commissioning date' }, { status: 400 })
+      }
+      commissioningDate = parsed
+    }
 
     const subassemblyData = category === 'Shovel' ? [
       { name: 'Engine / Prime Mover', lifeExpectancyHours: 10000, currentHours: 0, healthStatus: 'Good' },
@@ -58,8 +78,8 @@ export async function POST(request: Request) {
 
     const newMachine = await prisma.machine.create({
       data: {
-        name: data.name,
-        model: data.model,
+        name: data.name.trim(),
+        model: data.model.trim(),
         category,
         make: data.make || null,
         capacity: data.capacity || null,
@@ -67,7 +87,7 @@ export async function POST(request: Request) {
         status: data.status || 'Working',
         runningHours: initialHmr,
         serialNumber: data.serialNumber || null,
-        commissioningDate: data.commissioningDate ? new Date(data.commissioningDate) : null,
+        commissioningDate,
         subassemblies: {
           create: subassemblyData
         },
@@ -75,7 +95,7 @@ export async function POST(request: Request) {
           create: scheduledData
         }
       },
-      include: { 
+      include: {
         subassemblies: true,
         scheduledMaintenances: true
       }

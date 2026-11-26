@@ -5,10 +5,15 @@ import { encrypt } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json()
+    const body = await request.json()
+    const { username, password } = body || {}
+
+    if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 })
+    }
 
     const user = await prisma.user.findUnique({
-      where: { username }
+      where: { username: username.trim() }
     })
 
     if (!user) {
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     const isValid = await bcrypt.compare(password, user.password)
-    if (!isValid && password !== 'admin123') {
+    if (!isValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 

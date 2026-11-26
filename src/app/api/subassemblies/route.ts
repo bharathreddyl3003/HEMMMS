@@ -9,18 +9,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { machineId, name, lifeExpectancyHours, currentHours, healthStatus } = await request.json()
+    const body = await request.json()
+    const { machineId, name, lifeExpectancyHours, currentHours, healthStatus } = body || {}
 
-    if (!machineId || !name || !lifeExpectancyHours) {
+    if (typeof machineId !== 'string' || !machineId.trim() || typeof name !== 'string' || !name.trim() || lifeExpectancyHours === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const lifeExp = Number(lifeExpectancyHours)
+    const currHrs = currentHours !== undefined && currentHours !== '' ? Number(currentHours) : 0
+
+    if (!Number.isFinite(lifeExp) || lifeExp <= 0 || !Number.isFinite(currHrs) || currHrs < 0) {
+      return NextResponse.json({ error: 'Invalid hours values' }, { status: 400 })
     }
 
     const newSubassembly = await prisma.subassembly.create({
       data: {
-        machineId,
-        name,
-        lifeExpectancyHours: Number(lifeExpectancyHours),
-        currentHours: Number(currentHours) || 0,
+        machineId: machineId.trim(),
+        name: name.trim(),
+        lifeExpectancyHours: lifeExp,
+        currentHours: currHrs,
         healthStatus: healthStatus || 'Good'
       }
     })

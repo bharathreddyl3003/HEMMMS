@@ -30,23 +30,22 @@ export default function SparePartUsageSelector({
   manualNotes = '',
   onManualNotesChange
 }: SparePartUsageSelectorProps) {
-  const [spares, setSpares] = useState<SparePartOption[]>(initialSpares || [])
-  const [loading, setLoading] = useState(!initialSpares)
+  const hasInitialSpares = Boolean(initialSpares && initialSpares.length > 0)
+  const [fetchedSpares, setFetchedSpares] = useState<SparePartOption[]>([])
+  const [loading, setLoading] = useState(!hasInitialSpares)
   const [pickingPartId, setPickingPartId] = useState('')
   const [pickingQty, setPickingQty] = useState(1)
 
+  const spares = hasInitialSpares ? (initialSpares as SparePartOption[]) : fetchedSpares
+
   useEffect(() => {
-    if (initialSpares && initialSpares.length > 0) {
-      setSpares(initialSpares)
-      setLoading(false)
-      return
-    }
+    if (hasInitialSpares) return
     let active = true
     fetch('/api/spares')
       .then(res => res.json())
       .then(data => {
         if (active && Array.isArray(data)) {
-          setSpares(data)
+          setFetchedSpares(data)
         }
       })
       .catch(err => console.error('Failed to load spares:', err))
@@ -56,7 +55,7 @@ export default function SparePartUsageSelector({
     return () => {
       active = false
     }
-  }, [initialSpares])
+  }, [hasInitialSpares])
 
   const handleAddPart = () => {
     if (!pickingPartId || pickingQty <= 0) return
@@ -119,6 +118,7 @@ export default function SparePartUsageSelector({
       {/* Picker Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 78px auto', gap: '0.5rem', alignItems: 'center', marginBottom: '0.65rem' }}>
         <select
+          aria-label="Select spare part from inventory"
           value={pickingPartId}
           onChange={(e) => {
             setPickingPartId(e.target.value)

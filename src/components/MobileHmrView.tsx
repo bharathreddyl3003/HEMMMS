@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import { MachineWithSchedule } from './HmrRegisterTable'
 
@@ -25,14 +25,6 @@ export default function MobileHmrView({
   const debounceTimers = useRef<{ [machineId: string]: NodeJS.Timeout }>({})
 
   const machines = activeModule === 'shovels' ? shovels : drills
-
-  // Initialize local HMR values
-  useEffect(() => {
-    const map: { [id: string]: number } = {}
-    shovels.forEach(m => { map[m.id] = m.runningHours })
-    drills.forEach(m => { map[m.id] = m.runningHours })
-    setLocalHmr(map)
-  }, [shovels, drills])
 
   const handleHmrChange = (machineId: string, val: string) => {
     const num = parseFloat(val)
@@ -174,7 +166,7 @@ export default function MobileHmrView({
       </div>
 
       {/* Quick Search Input */}
-      <search style={{ marginBottom: '1.25rem' }}>
+      <div role="search" style={{ marginBottom: '1.25rem' }}>
         <input
           type="search"
           aria-label="Quick search machine ID or model"
@@ -191,7 +183,7 @@ export default function MobileHmrView({
             border: '1px solid var(--border-strong)'
           }}
         />
-      </search>
+      </div>
 
       {/* 2-Column Responsive Card Grid (Page 3 of PDF) */}
       <div style={{

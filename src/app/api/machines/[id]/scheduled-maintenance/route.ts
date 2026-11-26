@@ -76,6 +76,21 @@ export async function PATCH(
       description
     } = await request.json()
 
+    const allowedTypes = ['Engine', 'Compressor', 'Hydraulic']
+    if (typeof type !== 'string' || !allowedTypes.includes(type)) {
+      return NextResponse.json({ error: 'Invalid maintenance schedule type' }, { status: 400 })
+    }
+
+    const parsedHmr = parseFloat(lastMaintenanceHmr)
+    if (!Number.isFinite(parsedHmr) || parsedHmr < 0) {
+      return NextResponse.json({ error: 'Valid non-negative maintenance HMR is required' }, { status: 400 })
+    }
+
+    const parsedDate = lastMaintenanceDate ? new Date(lastMaintenanceDate) : new Date()
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid maintenance date' }, { status: 400 })
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       const { formattedPartsUsed, lowStockAlerts } = await deductSparePartsInTx(
         tx,
@@ -91,8 +106,8 @@ export async function PATCH(
           }
         },
         data: {
-          lastMaintenanceDate: lastMaintenanceDate ? new Date(lastMaintenanceDate) : new Date(),
-          lastMaintenanceHmr: parseFloat(lastMaintenanceHmr)
+          lastMaintenanceDate: parsedDate,
+          lastMaintenanceHmr: parsedHmr
         }
       })
 
@@ -100,10 +115,10 @@ export async function PATCH(
       const machine = await tx.machine.findUnique({
         where: { id: resolvedParams.id }
       })
-      if (machine && parseFloat(lastMaintenanceHmr) > machine.runningHours) {
+      if (machine && parsedHmr > machine.runningHours) {
         await tx.machine.update({
           where: { id: resolvedParams.id },
-          data: { runningHours: parseFloat(lastMaintenanceHmr) }
+          data: { runningHours: parsedHmr }
         })
       }
 
@@ -113,7 +128,7 @@ export async function PATCH(
           description: description || `Completed Scheduled Maintenance: ${type} Side`,
           logType: 'Scheduled Maintenance',
           subassemblyName: type,
-          hmr: parseFloat(lastMaintenanceHmr),
+          hmr: parsedHmr,
           status: 'Completed',
           performedBy: performedBy || null,
           partsUsed: formattedPartsUsed,
@@ -132,7 +147,14 @@ export async function PATCH(
   } catch (error: any) {
     console.error('Scheduled Maintenance PATCH Error:', error)
     const msg = error?.message || 'Failed to update'
-    if (msg.startsWith('Insufficient stock') || msg.startsWith('Spare part not found')) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Scheduled maintenance record not found' }, { status: 404 })
+    }
+    if (
+      msg.startsWith('Insufficient stock') ||
+      msg.startsWith('Spare part not found') ||
+      msg.startsWith('Invalid spare part')
+    ) {
       return NextResponse.json({ error: msg }, { status: 400 })
     }
     return NextResponse.json({ error: msg }, { status: 500 })

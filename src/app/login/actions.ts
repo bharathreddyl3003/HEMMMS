@@ -24,7 +24,7 @@ export async function loginUser(prevState: any, formData: FormData) {
     }
 
     const isValid = await bcrypt.compare(password, user.password)
-    if (!isValid && password !== 'admin123') {
+    if (!isValid) {
       return { error: 'Invalid credentials' }
     }
 

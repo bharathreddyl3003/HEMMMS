@@ -13,12 +13,17 @@ export async function PATCH(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (session.role !== 'ADMIN' && !session.permissions?.canEditMachines) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const resolvedParams = await params
     const body = await request.json()
-    const runningHours = parseFloat(body.runningHours)
+    const runningHours = typeof body?.runningHours === 'number'
+      ? body.runningHours
+      : parseFloat(body?.runningHours)
 
-    if (isNaN(runningHours)) {
+    if (!Number.isFinite(runningHours) || runningHours < 0) {
       return NextResponse.json({ error: 'Invalid running hours value' }, { status: 400 })
     }
 
@@ -34,6 +39,9 @@ export async function PATCH(
       runningHours: updated.runningHours
     })
   } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
+    }
     console.error('HMR Auto-save Error:', error)
     return NextResponse.json({ error: error.message || 'Failed to update HMR' }, { status: 500 })
   }

@@ -14,12 +14,42 @@ export async function PATCH(
 
     const resolvedParams = await params
     const body = await request.json()
+    const { name, lifeExpectancyHours, currentHours, healthStatus } = body || {}
+
+    const updateData: Record<string, any> = {}
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) {
+        return NextResponse.json({ error: 'Invalid name' }, { status: 400 })
+      }
+      updateData.name = name.trim()
+    }
+    if (lifeExpectancyHours !== undefined) {
+      const lifeExp = Number(lifeExpectancyHours)
+      if (!Number.isFinite(lifeExp) || lifeExp <= 0) {
+        return NextResponse.json({ error: 'Life expectancy must be positive' }, { status: 400 })
+      }
+      updateData.lifeExpectancyHours = lifeExp
+    }
+    if (currentHours !== undefined) {
+      const currHrs = Number(currentHours)
+      if (!Number.isFinite(currHrs) || currHrs < 0) {
+        return NextResponse.json({ error: 'Current hours must be non-negative' }, { status: 400 })
+      }
+      updateData.currentHours = currHrs
+    }
+    if (healthStatus !== undefined) {
+      updateData.healthStatus = healthStatus
+    }
+
     const subassembly = await prisma.subassembly.update({
       where: { id: resolvedParams.id },
-      data: body
+      data: updateData
     })
     return NextResponse.json(subassembly)
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Subassembly not found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Failed to update subassembly' }, { status: 500 })
   }
 }
@@ -39,7 +69,10 @@ export async function DELETE(
       where: { id: resolvedParams.id }
     })
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Subassembly not found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Failed to delete subassembly' }, { status: 500 })
   }
 }

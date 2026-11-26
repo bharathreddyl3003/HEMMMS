@@ -7,6 +7,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const resolvedParams = await params
     const machine = await prisma.machine.findUnique({
       where: { id: resolvedParams.id },
@@ -32,6 +37,27 @@ export async function PATCH(
     const resolvedParams = await params
     const data = await request.json()
 
+    let runningHours: number | undefined
+    if (data.runningHours !== undefined) {
+      runningHours = parseFloat(data.runningHours)
+      if (!Number.isFinite(runningHours) || runningHours < 0) {
+        return NextResponse.json({ error: 'Invalid running hours value' }, { status: 400 })
+      }
+    }
+
+    let commissioningDate: Date | null | undefined
+    if (data.commissioningDate !== undefined) {
+      if (!data.commissioningDate) {
+        commissioningDate = null
+      } else {
+        const parsed = new Date(data.commissioningDate)
+        if (isNaN(parsed.getTime())) {
+          return NextResponse.json({ error: 'Invalid commissioning date' }, { status: 400 })
+        }
+        commissioningDate = parsed
+      }
+    }
+
     const updated = await prisma.machine.update({
       where: { id: resolvedParams.id },
       data: {
@@ -42,13 +68,16 @@ export async function PATCH(
         capacity: data.capacity !== undefined ? data.capacity : undefined,
         type: data.type,
         status: data.status,
-        runningHours: data.runningHours !== undefined ? parseFloat(data.runningHours) : undefined,
-        serialNumber: data.serialNumber || null,
-        commissioningDate: data.commissioningDate ? new Date(data.commissioningDate) : null,
+        runningHours,
+        serialNumber: data.serialNumber !== undefined ? (data.serialNumber || null) : undefined,
+        commissioningDate,
       }
     })
     return NextResponse.json(updated)
   } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
+    }
     console.error('PATCH Error:', error)
     return NextResponse.json({ error: error.message || 'Failed to update' }, { status: 500 })
   }
@@ -69,7 +98,10 @@ export async function DELETE(
       where: { id: resolvedParams.id }
     })
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Failed to delete machine' }, { status: 500 })
   }
 }
