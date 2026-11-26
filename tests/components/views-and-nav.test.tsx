@@ -68,7 +68,7 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
       },
     ]
 
-    render(<DashboardView allMachines={machines} initialModule="shovels" canEdit={false} />)
+    render(<DashboardView allMachines={machines} initialModule="shovels" canEdit={true} />)
 
     // Fleet telemetry summary tiles & removed header actions do not render on Dashboard
     expect(screen.queryByText('Shovels Fleet')).not.toBeInTheDocument()
@@ -78,6 +78,9 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     expect(screen.queryByRole('link', { name: /HMR Register/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Field HMR/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Schedule Maintenance/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /\+ Add Shovel/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /\+ Add Drill/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /\+ Add Equipment/i })).toBeInTheDocument()
 
     expect(screen.getByText('T2')).toBeInTheDocument()
     expect(screen.getByText('S2')).toBeInTheDocument()
@@ -91,6 +94,8 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Drills Module/i }))
     expect(screen.queryByText('Drills Fleet')).not.toBeInTheDocument()
     expect(screen.queryByText('Mechanical Availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /\+ Add Drill/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /\+ Add Equipment/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
     expect(screen.getByText('DM11')).toBeInTheDocument()
   })

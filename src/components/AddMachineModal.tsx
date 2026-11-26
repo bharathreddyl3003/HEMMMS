@@ -4,7 +4,13 @@ import { useState } from 'react'
 import Modal from './Modal'
 import { useRouter } from 'next/navigation'
 
-export default function AddMachineModal({ defaultCategory = 'Shovel' }: { defaultCategory?: 'Shovel' | 'Drill' }) {
+export default function AddMachineModal({
+  defaultCategory = 'Shovel',
+  buttonLabel,
+}: {
+  defaultCategory?: 'Shovel' | 'Drill'
+  buttonLabel?: string
+}) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +28,12 @@ export default function AddMachineModal({ defaultCategory = 'Shovel' }: { defaul
       setMake('Sandvik')
       setCapacity('150mm')
     }
+  }
+
+  const handleOpen = () => {
+    handleCategoryChange(defaultCategory)
+    setError('')
+    setIsOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,8 +71,8 @@ export default function AddMachineModal({ defaultCategory = 'Shovel' }: { defaul
 
   return (
     <>
-      <button className="btn btn-primary" onClick={() => setIsOpen(true)}>
-        + Add {category}
+      <button className="btn btn-primary" onClick={handleOpen}>
+        {buttonLabel ?? `+ Add ${category}`}
       </button>
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Add New ${category}`}>
