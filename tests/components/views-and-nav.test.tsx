@@ -70,8 +70,15 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
 
     render(<DashboardView allMachines={machines} initialModule="shovels" canEdit={false} />)
 
-    // Shovels telemetry: 1/2 Working -> 50.0%
-    expect(screen.getByText('50.0%')).toBeInTheDocument()
+    // Fleet telemetry summary tiles & removed header actions do not render on Dashboard
+    expect(screen.queryByText('Shovels Fleet')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mechanical Availability')).not.toBeInTheDocument()
+    expect(screen.queryByText('Cumulative Operating HMR')).not.toBeInTheDocument()
+    expect(screen.queryByText('Units Requiring Attention')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /HMR Register/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Field HMR/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Schedule Maintenance/i })).not.toBeInTheDocument()
+
     expect(screen.getByText('T2')).toBeInTheDocument()
     expect(screen.getByText('S2')).toBeInTheDocument()
 
@@ -80,9 +87,10 @@ describe('Dashboard, Status, Mobile HMR, TopNav & Modal UI Integration', () => {
     expect(screen.queryByText('T2')).not.toBeInTheDocument()
     expect(screen.getByText('S2')).toBeInTheDocument()
 
-    // Switch to Drills Module -> 100.0% availability
+    // Switch to Drills Module
     fireEvent.click(screen.getByRole('tab', { name: /Drills Module/i }))
-    expect(screen.getByText('100.0%')).toBeInTheDocument()
+    expect(screen.queryByText('Drills Fleet')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mechanical Availability')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
     expect(screen.getByText('DM11')).toBeInTheDocument()
   })

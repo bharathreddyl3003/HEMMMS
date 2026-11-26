@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
-import ScheduleMaintenanceModal from '@/components/ScheduleMaintenanceModal'
 import AddMachineModal from '@/components/AddMachineModal'
 
 interface MachineItem {
@@ -52,20 +51,6 @@ export default function DashboardView({
     }
   }
 
-  // Telemetry metrics for active module
-  const metrics = useMemo(() => {
-    const total = moduleMachines.length
-    const working = moduleMachines.filter(m => m.status === 'Working').length
-    const attention = moduleMachines.filter(m =>
-      m.status !== 'Working' ||
-      m.subassemblies.some(s => s.healthStatus === 'Warning' || s.healthStatus === 'Critical')
-    ).length
-    const totalHmr = moduleMachines.reduce((sum, m) => sum + (m.runningHours || 0), 0)
-    const availability = total > 0 ? (working / total) * 100 : 100
-
-    return { total, working, attention, totalHmr, availability }
-  }, [moduleMachines])
-
   // Filtered machines (instant 0ms search & status filter)
   const displayedMachines = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -113,30 +98,11 @@ export default function DashboardView({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href={`/hmr-register?module=${activeModule}`}
-            className="btn"
-            style={{
-              background: 'rgba(56, 189, 248, 0.12)',
-              color: '#38bdf8',
-              borderColor: 'rgba(56, 189, 248, 0.35)',
-              fontWeight: 600
-            }}
-          >
-            📋 HMR Register
-          </Link>
-          <Link
-            href={`/mobile-hmr?module=${activeModule}`}
-            className="btn btn-secondary"
-          >
-            📱 Field HMR
-          </Link>
-          <ScheduleMaintenanceModal machines={allMachines.map(m => ({ id: m.id, name: m.name }))} />
-          {canEdit && (
+        {canEdit && (
+          <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <AddMachineModal defaultCategory={activeModule === 'shovels' ? 'Shovel' : 'Drill'} />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Segmented Module Switcher + Search/Filter Toolbar */}
@@ -257,66 +223,6 @@ export default function DashboardView({
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Executive Fleet Telemetry Strip */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-        gap: '1rem',
-        marginBottom: '1.5rem'
-      }}>
-        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #38bdf8' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            {activeModule === 'shovels' ? 'Shovels Fleet' : 'Drills Fleet'}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#f8fafc' }}>
-              {metrics.working}/{metrics.total}
-            </span>
-            <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 600 }}>Working</span>
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #10b981' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            Mechanical Availability
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '0.35rem' }}>
-            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#34d399' }}>
-              {metrics.availability.toFixed(1)}%
-            </span>
-          </div>
-          <div style={{ marginTop: '0.45rem', height: '5px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-            <div style={{ width: `${metrics.availability}%`, height: '100%', background: '#10b981' }} />
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: '3px solid #f59e0b' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            Cumulative Operating HMR
-          </div>
-          <div style={{ marginTop: '0.35rem' }}>
-            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: '#fbbf24' }}>
-              {Math.round(metrics.totalHmr).toLocaleString()}
-            </span>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginLeft: '0.35rem' }}>hrs</span>
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', borderInlineStart: `3px solid ${metrics.attention > 0 ? '#f43f5e' : '#64748b'}` }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
-            Units Requiring Attention
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-            <span className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 700, color: metrics.attention > 0 ? '#fb7185' : '#94a3b8' }}>
-              {metrics.attention}
-            </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              {metrics.attention === 0 ? 'All components nominal' : 'Check warnings / status'}
-            </span>
           </div>
         </div>
       </div>
