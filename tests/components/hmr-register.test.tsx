@@ -135,11 +135,10 @@ describe('HmrRegisterTable & Closed-Loop Spares UI Integration', () => {
     expect(screen.getByText('⚠ Save failed')).toBeInTheDocument()
   })
 
-  it('completes service with spare part deduction, triggers LowStockAlertModal, and creates a PR', async () => {
+  it('completes service with spare part deduction and triggers LowStockAlertModal', async () => {
     vi.useRealTimers()
 
     fetchMock
-      // 1st call: POST /api/machines/m-s2/complete-service
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -155,11 +154,6 @@ describe('HmrRegisterTable & Closed-Loop Spares UI Integration', () => {
             },
           ],
         }),
-      })
-      // 2nd call: POST /api/requisitions (from LowStockAlertModal)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'pr-1', status: 'Pending' }),
       })
 
     const onCompletionAdded = vi.fn()
@@ -201,21 +195,11 @@ describe('HmrRegisterTable & Closed-Loop Spares UI Integration', () => {
     )
     expect(onCompletionAdded).toHaveBeenCalled()
 
-    // LowStockAlertModal opens with 1-click Generate PR button
-    expect(screen.getByText(/Low Stock Alert — Purchase Requisition Needed/i)).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /\+ Generate PR/i }))
-    })
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/requisitions',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"sparePartId":"sp-1","quantity":4'),
-      })
-    )
-    expect(screen.getByText('✓ PR Created')).toBeInTheDocument()
+    // LowStockAlertModal opens with restock info and link to Spares Inventory
+    expect(screen.getByText(/Low Stock Alert — Restock Needed/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Open Spares Inventory/i })).toHaveAttribute('href', '/inventory')
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByText(/Low Stock Alert — Restock Needed/i)).not.toBeInTheDocument()
   })
 
   it('filters MaintenanceCompletionRegistry in memory by category without extra fetch on mount', async () => {

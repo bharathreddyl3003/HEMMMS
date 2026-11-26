@@ -7,10 +7,6 @@ const { mockPrisma, mockGetSession } = vi.hoisted(() => ({
       findMany: vi.fn(),
       create: vi.fn(),
     },
-    purchaseRequisition: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-    },
     subassembly: {
       create: vi.fn(),
       update: vi.fn(),
@@ -24,11 +20,10 @@ vi.mock('@/lib/prisma', () => ({ default: mockPrisma }))
 vi.mock('@/lib/auth', () => ({ getSession: mockGetSession }))
 
 import { GET as sparesGet, POST as sparesPost } from '@/app/api/spares/route'
-import { GET as prsGet, POST as prsPost } from '@/app/api/requisitions/route'
 import { POST as subCreate } from '@/app/api/subassemblies/route'
 import { PATCH as subPatch, DELETE as subDelete } from '@/app/api/subassemblies/[id]/route'
 
-describe('Inventory, Requisitions & Subassemblies API routes', () => {
+describe('Inventory & Subassemblies API routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -79,32 +74,6 @@ describe('Inventory, Requisitions & Subassemblies API routes', () => {
         })
       )
       expect(dupRes.status).toBe(400)
-    })
-  })
-
-  describe('/api/requisitions', () => {
-    it('creates PR with validated fields and rejects invalid quantities', async () => {
-      mockGetSession.mockResolvedValue(null)
-      expect((await prsGet()).status).toBe(401)
-
-      mockGetSession.mockResolvedValue({ role: 'USER', permissions: { canManagePRs: true } })
-      mockPrisma.purchaseRequisition.create.mockResolvedValue({ id: 'pr1', quantity: 5, status: 'Pending' })
-
-      const okRes = await prsPost(
-        new Request('http://localhost/api/requisitions', {
-          method: 'POST',
-          body: JSON.stringify({ sparePartId: 'sp1', quantity: 5, status: 'Pending' }),
-        })
-      )
-      expect(okRes.status).toBe(201)
-
-      const zeroQtyRes = await prsPost(
-        new Request('http://localhost/api/requisitions', {
-          method: 'POST',
-          body: JSON.stringify({ sparePartId: 'sp1', quantity: 0 }),
-        })
-      )
-      expect(zeroQtyRes.status).toBe(400)
     })
   })
 

@@ -17,7 +17,7 @@ export async function PATCH(
 
     // Prevent changing the role to ensure only ADMIN remains ADMIN unless we specifically build that feature.
     // For now we only allow toggling boolean permissions.
-    const { canEditMachines, canEditSpares, canManageMaintenance, canManagePRs, canManageScheduledMaintenance } = body
+    const { canEditMachines, canEditSpares, canManageMaintenance, canManageScheduledMaintenance } = body
 
     const user = await prisma.user.update({
       where: { id: resolvedParams.id },
@@ -25,7 +25,6 @@ export async function PATCH(
         ...(canEditMachines !== undefined && { canEditMachines }),
         ...(canEditSpares !== undefined && { canEditSpares }),
         ...(canManageMaintenance !== undefined && { canManageMaintenance }),
-        ...(canManagePRs !== undefined && { canManagePRs }),
         ...(canManageScheduledMaintenance !== undefined && { canManageScheduledMaintenance }),
       },
       select: { id: true, username: true }

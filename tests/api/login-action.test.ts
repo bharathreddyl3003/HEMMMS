@@ -62,7 +62,6 @@ describe('Server Action: loginUser', () => {
       canEditMachines: true,
       canEditSpares: true,
       canManageMaintenance: true,
-      canManagePRs: true,
       canManageScheduledMaintenance: true,
     })
 

@@ -1,6 +1,5 @@
 import prisma from '@/lib/prisma';
 import AddPartModal from '@/components/AddPartModal';
-import CreatePRModal from '@/components/CreatePRModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +22,10 @@ export default async function Inventory() {
             Spares Inventory
           </h1>
           <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Filters, lubricants, wear parts, and automatic low-stock requisition thresholds
+            Filters, lubricants, wear parts, and automatic low-stock alert thresholds
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <CreatePRModal spareParts={spares} />
           <AddPartModal />
         </div>
       </div>
@@ -64,7 +62,7 @@ export default async function Inventory() {
 
       <div className="glass-panel" style={{ padding: '1.25rem' }}>
         <div tabIndex={0} role="region" aria-label="Spares Inventory Table" className="table-wrapper" style={{ border: '1px solid var(--border)', background: 'rgba(6, 10, 20, 0.35)' }}>
-          <table className="hemmms-table" style={{ minWidth: '720px' }}>
+          <table className="hemmms-table" style={{ minWidth: '640px' }}>
             <thead>
               <tr>
                 <th scope="col" style={{ padding: '0.9rem 1rem' }}>Part Number</th>
@@ -72,13 +70,12 @@ export default async function Inventory() {
                 <th scope="col" style={{ padding: '0.9rem 1rem' }}>Stock Quantity</th>
                 <th scope="col" style={{ padding: '0.9rem 1rem' }}>Reorder Level</th>
                 <th scope="col" style={{ padding: '0.9rem 1rem' }}>Status</th>
-                <th scope="col" style={{ padding: '0.9rem 1rem', textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {spares.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No spare parts registered yet.
                   </td>
                 </tr>
@@ -107,14 +104,6 @@ export default async function Inventory() {
                         <span className="badge danger">Low Stock</span>
                       ) : (
                         <span className="badge success">In Stock</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.95rem 1rem', textAlign: 'right' }}>
-                      {needsReorder && (
-                        <CreatePRModal
-                          spareParts={spares}
-                          defaultSparePartId={spare.id}
-                        />
                       )}
                     </td>
                   </tr>

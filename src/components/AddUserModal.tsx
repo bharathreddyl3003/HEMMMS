@@ -25,7 +25,6 @@ export default function AddUserModal() {
         canEditMachines: formData.get('canEditMachines') === 'on',
         canEditSpares: formData.get('canEditSpares') === 'on',
         canManageMaintenance: formData.get('canManageMaintenance') === 'on',
-        canManagePRs: formData.get('canManagePRs') === 'on',
         canManageScheduledMaintenance: formData.get('canManageScheduledMaintenance') === 'on',
       })
     })
@@ -67,11 +66,6 @@ export default function AddUserModal() {
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input type="checkbox" name="canManageMaintenance" style={{ width: 'auto', marginBottom: 0 }} />
             Manage Maintenance Logs
-          </label>
-          
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
-            <input type="checkbox" name="canManagePRs" style={{ width: 'auto', marginBottom: 0 }} />
-            Manage Purchase Requisitions
           </label>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem' }}>

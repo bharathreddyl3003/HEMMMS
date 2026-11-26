@@ -19,7 +19,6 @@ export async function GET() {
         canEditMachines: true,
         canEditSpares: true,
         canManageMaintenance: true,
-        canManagePRs: true,
         canManageScheduledMaintenance: true,
         createdAt: true,
       }
@@ -44,7 +43,6 @@ export async function POST(request: Request) {
       canEditMachines,
       canEditSpares,
       canManageMaintenance,
-      canManagePRs,
       canManageScheduledMaintenance
     } = body || {}
 
@@ -68,7 +66,6 @@ export async function POST(request: Request) {
         canEditMachines: Boolean(canEditMachines),
         canEditSpares: Boolean(canEditSpares),
         canManageMaintenance: Boolean(canManageMaintenance),
-        canManagePRs: Boolean(canManagePRs),
         canManageScheduledMaintenance: Boolean(canManageScheduledMaintenance),
       },
       select: { id: true, username: true }

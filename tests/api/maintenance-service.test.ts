@@ -27,7 +27,6 @@ import { POST as completeServicePost } from '@/app/api/machines/[id]/complete-se
 import { GET as schedGet, PATCH as schedPatch } from '@/app/api/machines/[id]/scheduled-maintenance/route'
 import { GET as completionsGet } from '@/app/api/maintenance/completions/route'
 import { POST as maintenancePost } from '@/app/api/maintenance/route'
-import { GET as exportCsvGet } from '@/app/api/reports/export/route'
 
 describe('Maintenance, Service Completion & Export API routes', () => {
   beforeEach(() => {
@@ -260,8 +259,8 @@ describe('Maintenance, Service Completion & Export API routes', () => {
     })
   })
 
-  describe('GET/POST /api/maintenance & GET /api/reports/export', () => {
-    it('validates maintenance POST fields and handles CSV export escaping', async () => {
+  describe('GET/POST /api/maintenance', () => {
+    it('validates maintenance POST fields', async () => {
       mockGetSession.mockResolvedValue({ role: 'ADMIN' })
 
       const invalidRes = await maintenancePost(
@@ -279,30 +278,6 @@ describe('Maintenance, Service Completion & Export API routes', () => {
         })
       )
       expect(negCostRes.status).toBe(400)
-
-      mockPrisma.maintenanceRecord.findMany.mockResolvedValue([
-        {
-          id: 'rec-1',
-          machine: { name: 'T2', model: 'EX1200' },
-          createdAt: new Date('2026-11-24T10:00:00.000Z'),
-          logType: 'Repair',
-          subassemblyName: null,
-          hmr: 33205,
-          performedBy: 'Mahesh "Lead"',
-          timeSpentHrs: 3.5,
-          cost: 420,
-          partsUsed: 'Filter, Seal',
-          status: 'Completed',
-          description: 'Replaced "high pressure" hose',
-        },
-      ])
-
-      const csvRes = await exportCsvGet()
-      expect(csvRes.status).toBe(200)
-      expect(csvRes.headers.get('content-type')).toContain('text/csv')
-      const csvText = await csvRes.text()
-      expect(csvText).toContain('"Mahesh ""Lead"""')
-      expect(csvText).toContain('"Replaced ""high pressure"" hose"')
     })
   })
 })

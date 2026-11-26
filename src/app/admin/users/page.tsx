@@ -32,7 +32,6 @@ export default async function AdminUsersPage() {
               <th style={{ padding: '1rem', textAlign: 'center' }}>Edit Machines</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>Edit Spares</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>Manage Maintenance</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Manage PRs</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>Manage Sched. Maint.</th>
             </tr>
           </thead>

@@ -35,11 +35,11 @@ describe('src/proxy.ts route guard', () => {
     expect(res.headers.get('location')).toBe('http://localhost:3000/login')
   })
 
-  it('restricts /admin, /inventory, and /requisitions for unauthorized roles', async () => {
+  it('restricts /admin and /inventory for unauthorized roles', async () => {
     const regularToken = await encrypt({
       userId: 'u1',
       role: 'USER',
-      permissions: { canEditSpares: false, canManagePRs: false },
+      permissions: { canEditSpares: false },
     })
 
     const adminRes = await proxy(makeRequest('/admin/users', regularToken))
@@ -49,21 +49,16 @@ describe('src/proxy.ts route guard', () => {
     const invRes = await proxy(makeRequest('/inventory', regularToken))
     expect(invRes.status).toBe(307)
     expect(invRes.headers.get('location')).toBe('http://localhost:3000/')
-
-    const prRes = await proxy(makeRequest('/requisitions', regularToken))
-    expect(prRes.status).toBe(307)
-    expect(prRes.headers.get('location')).toBe('http://localhost:3000/')
   })
 
   it('permits ADMIN and explicitly permitted users to access protected modules', async () => {
     const sparesUserToken = await encrypt({
       userId: 'u2',
       role: 'USER',
-      permissions: { canEditSpares: true, canManagePRs: true },
+      permissions: { canEditSpares: true },
     })
 
     expect((await proxy(makeRequest('/inventory', sparesUserToken))).status).toBe(200)
-    expect((await proxy(makeRequest('/requisitions', sparesUserToken))).status).toBe(200)
 
     const adminToken = await encrypt({ userId: 'a1', role: 'ADMIN', permissions: {} })
     expect((await proxy(makeRequest('/admin/users', adminToken))).status).toBe(200)

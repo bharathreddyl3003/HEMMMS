@@ -34,7 +34,6 @@ export async function POST(request: Request) {
         canEditMachines: user.canEditMachines,
         canEditSpares: user.canEditSpares,
         canManageMaintenance: user.canManageMaintenance,
-        canManagePRs: user.canManagePRs,
         canManageScheduledMaintenance: user.canManageScheduledMaintenance
       }
     }

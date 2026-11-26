@@ -44,7 +44,6 @@ describe('Auth & Users API routes', () => {
         canEditMachines: true,
         canEditSpares: false,
         canManageMaintenance: true,
-        canManagePRs: false,
         canManageScheduledMaintenance: true,
       })
 

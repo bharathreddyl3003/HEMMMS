@@ -27,10 +27,6 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/inventory') && payload.role !== 'ADMIN' && !payload.permissions?.canEditSpares) {
       return NextResponse.redirect(new URL('/', request.url))
     }
-    // Restrict PRs module
-    if (pathname.startsWith('/requisitions') && payload.role !== 'ADMIN' && !payload.permissions?.canManagePRs) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
   } catch (error) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

@@ -36,7 +36,6 @@ export async function loginUser(prevState: any, formData: FormData) {
         canEditMachines: user.canEditMachines,
         canEditSpares: user.canEditSpares,
         canManageMaintenance: user.canManageMaintenance,
-        canManagePRs: user.canManagePRs,
         canManageScheduledMaintenance: user.canManageScheduledMaintenance
       }
     }

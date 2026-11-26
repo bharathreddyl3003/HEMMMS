@@ -23,7 +23,7 @@ export default function UserPermissionRow({ user }: { user: any }) {
       <tr style={{ borderBottom: '1px solid var(--border)' }}>
         <td style={{ padding: '1rem' }}><strong>{user.username}</strong></td>
         <td style={{ padding: '1rem' }}><span className="badge accent">{user.role}</span></td>
-        <td colSpan={5} style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+        <td colSpan={4} style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
           Admins have all permissions
         </td>
       </tr>
@@ -58,15 +58,6 @@ export default function UserPermissionRow({ user }: { user: any }) {
           type="checkbox" 
           checked={user.canManageMaintenance} 
           onChange={() => togglePermission('canManageMaintenance', user.canManageMaintenance)}
-          disabled={loading}
-          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-        />
-      </td>
-      <td style={{ padding: '1rem', textAlign: 'center' }}>
-        <input 
-          type="checkbox" 
-          checked={user.canManagePRs} 
-          onChange={() => togglePermission('canManagePRs', user.canManagePRs)}
           disabled={loading}
           style={{ width: '20px', height: '20px', cursor: 'pointer' }}
         />
